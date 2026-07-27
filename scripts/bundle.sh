@@ -6,8 +6,8 @@ set -euo pipefail
 
 APP_NAME="LikeLionBar"
 BUNDLE_ID="com.ryujunyeong.likelionbar"
-VERSION="0.2.1"
-BUILD_NUMBER="3"
+VERSION="0.3.0"
+BUILD_NUMBER="4"
 MIN_MACOS="14.0"
 
 CONFIG="${1:-debug}"
