@@ -6,10 +6,14 @@
 #   ./scripts/preview.sh 09:11:00              → 지각
 #   ./scripts/preview.sh 09:30:00 checkIn      → 강의실 입장 조르기
 #   ./scripts/preview.sh 17:58:00 checkIn,classroom → 퇴실
+#
+# 3번째 인자는 배속. 알림 4번을 실시간으로 보려면 21분이 걸리므로 압축해서 본다.
+#   ./scripts/preview.sh 08:46:30 "" 30   → 실시간 1초가 가짜 30초
 set -euo pipefail
 
 TIME="${1:-08:47:00}"
 DONE="${2:-}"
+SPEED="${3:-1}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 APP="$ROOT/build/LikeLionBar.app"
@@ -26,10 +30,11 @@ fi
 pkill -f "LikeLionBar.app/Contents/MacOS/LikeLionBar" 2>/dev/null || true
 sleep 0.3
 
-echo "▸ 가짜 시각 ${DAY}T${TIME}${DONE:+  (완료: $DONE)}"
+echo "▸ 가짜 시각 ${DAY}T${TIME}${DONE:+  (완료: $DONE)}$([ "$SPEED" != "1" ] && echo "  ${SPEED}배속")"
 # 실행 파일을 직접 돌리면 LaunchServices에 앱으로 등록되지 않아 알림 권한이 통하지 않는다.
 # 반드시 번들을 open으로 띄운다.
-open -n "$APP" --env "LIKELIONBAR_FAKE_TIME=${DAY}T${TIME}" --env "LIKELIONBAR_FAKE_DONE=$DONE"
+open -n "$APP" --env "LIKELIONBAR_FAKE_TIME=${DAY}T${TIME}" \
+    --env "LIKELIONBAR_FAKE_DONE=$DONE" --env "LIKELIONBAR_FAKE_SPEED=$SPEED"
 
 sleep 1.5
 if pgrep -f "LikeLionBar.app/Contents/MacOS/LikeLionBar" >/dev/null; then

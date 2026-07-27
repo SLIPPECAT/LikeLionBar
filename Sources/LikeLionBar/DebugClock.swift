@@ -40,9 +40,15 @@ enum DebugClock {
             return { Date() }
         }
 
+        // 알림 4번을 실시간으로 보려면 21분을 기다려야 한다. 배속으로 압축한다.
+        // 틱은 1초마다 돌므로 배속이 커도 각 알림 시각을 건너뛰지 않는다
+        // (다만 300배를 넘기면 한 틱이 5분을 넘어 밀린 알림 병합 로직이 작동한다).
+        let speed = ProcessInfo.processInfo.environment["LIKELIONBAR_FAKE_SPEED"]
+            .flatMap(Double.init) ?? 1
+
         let realStart = Date()
-        NSLog("LikeLionBar: 가짜 시각 모드 — \(raw) 부터 시작")
-        return { fakeStart.addingTimeInterval(Date().timeIntervalSince(realStart)) }
+        NSLog("LikeLionBar: 가짜 시각 모드 — \(raw) 부터, \(speed)배속")
+        return { fakeStart.addingTimeInterval(Date().timeIntervalSince(realStart) * speed) }
     }
 
     /// `LIKELIONBAR_FAKE_DONE=checkIn,classroom` 형태로 완료 단계를 미리 채운다.

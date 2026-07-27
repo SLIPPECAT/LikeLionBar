@@ -33,7 +33,17 @@ final class StatusItemController {
         set { statusItem.menu = newValue }
     }
 
+    /// App Nap을 막는 활동 토큰. 해제되면 다시 절전 대상이 되므로 계속 붙들고 있어야 한다.
+    private var activity: NSObjectProtocol?
+
     func start() {
+        // 창 없는 메뉴바 앱은 App Nap 대상이 된다. 그러면 1초 타이머가 코얼레싱되어
+        // 카운트다운이 멈추고 알림이 통째로 밀린다. 아침 지각을 막는 게 목적인 앱에서
+        // 이건 치명적이라 절전에서 명시적으로 빠진다.
+        activity = ProcessInfo.processInfo.beginActivity(
+            options: [.userInitiated], reason: "출결 카운트다운과 알림"
+        )
+
         refresh()
 
         // 카운트다운의 초가 실제로 줄어드는 게 보여야 다급함이 전달된다.

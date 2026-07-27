@@ -132,6 +132,7 @@ final class MenuController: NSObject, NSMenuDelegate {
         guard let raw = sender.representedObject as? String, let step = Step(rawValue: raw) else {
             return
         }
+        Log.write("메뉴에서 \(step.label) 토글 (사용자 클릭)")
         store.toggle(step, at: nowProvider())
         onChange()
     }

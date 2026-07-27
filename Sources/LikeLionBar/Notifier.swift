@@ -18,7 +18,16 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     private var isAuthorized = false
     private var lastTick: Date?
+    private var lastRealTick: Date?
     private var cameraSnoozedUntil: Date?
+
+    /// LIKELIONBAR_TRACE=1 이면 매 틱의 검사 구간을 남긴다. 알림이 왜 안 떴는지 볼 때 쓴다.
+    private let trace = ProcessInfo.processInfo.environment["LIKELIONBAR_TRACE"] != nil
+    private lazy var traceFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
 
     /// 이보다 오래 끊겼으면(맥이 자고 있었다면) 밀린 알림을 한꺼번에 쏟지 않는다.
     private let catchUpLimit: TimeInterval = 5 * 60
@@ -98,13 +107,27 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
 
     func tick() {
         let now = nowProvider()
-        defer { lastTick = now }
+        let realNow = Date()
+        defer { lastTick = now; lastRealTick = realNow }
+
+        // 틱이 1초마다 안 돌면 카운트다운이 멈추고 알림이 밀린다. 조용히 어긋나면
+        // 원인을 찾기 어려우므로 눈에 띄게 남긴다.
+        if let lastReal = lastRealTick, realNow.timeIntervalSince(lastReal) > 3 {
+            Log.write("틱이 \(Int(realNow.timeIntervalSince(lastReal)))초 만에 돌았다 — 절전/슬립 의심")
+        }
 
         // 첫 틱은 기준점만 잡는다. 실행하자마자 지난 알림이 쏟아지면 안 된다.
         guard let last = lastTick else { return }
         guard isAuthorized else { return }
 
-        var due = engine.due(from: last, to: now, state: stateProvider())
+        let state = stateProvider()
+        var due = engine.due(from: last, to: now, state: state)
+
+        if trace {
+            Log.write("틱 \(traceFormatter.string(from: last)) → \(traceFormatter.string(from: now))"
+                + "  due=\(due.count)  checkIn완료=\(state.isDone(.checkIn))")
+        }
+
         guard !due.isEmpty else { return }
 
         // 맥이 자고 있었다면 밀린 게 여러 개다. 종류별로 마지막 것만 남긴다.
@@ -168,6 +191,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     ) {
         let raw = response.notification.request.content.userInfo["step"] as? String
         let step = raw.flatMap(Step.init(rawValue:))
+        Log.write("알림 응답 — action=\(response.actionIdentifier) step=\(raw ?? "없음")")
 
         switch response.actionIdentifier {
         case Action.done:
