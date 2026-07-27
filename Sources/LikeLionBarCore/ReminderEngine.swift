@@ -5,7 +5,7 @@ public enum Reminder: Equatable, Sendable {
     /// `attempt`는 1부터. `isFinal`이면 마지막 경고다.
     case checkIn(attempt: Int, isFinal: Bool)
     case classroom(isFinal: Bool)
-    /// 매시간 사진. `hour`는 대상 시간대.
+    /// 매시간 카메라 확인. `hour`는 대상 시간대.
     case photo(hour: Int, isFinal: Bool)
     case checkOut(attempt: Int)
     /// 사용자가 직접 등록한 알림.
@@ -52,7 +52,7 @@ public struct ReminderEngine: Sendable {
             }
         }
 
-        // 입실을 안 했으면 강의실을 조를 차례가 아니다.
+        // 입실을 안 했으면 강의실을 안내할 차례가 아니다.
         if state.isDone(.checkIn), !state.isDone(.classroom) {
             let last = schedule.classroomReminders.count - 1
             for (index, time) in schedule.classroomReminders.enumerated()
@@ -68,7 +68,7 @@ public struct ReminderEngine: Sendable {
             }
         }
 
-        // 사진은 매시간 마감이 따로 있다. 이번 시간에 안 찍었으면 조른다.
+        // 카메라 확인은 매시간 마감이 따로 있다. 이번 시간에 아직이면 알린다.
         let hour = calendar.component(.hour, from: to)
         if schedule.photoHours.contains(hour), !state.isPhotoDone(hour: hour) {
             let last = schedule.photoReminderMinutes.count - 1

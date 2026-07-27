@@ -59,7 +59,7 @@ public struct Schedule: Equatable, Codable, Sendable {
     /// `강의실 입장` 버튼이 눌리기 시작하는 시각.
     /// 수업 시작과 별개다 — 실제로 언제 활성화되는지는 관찰해서 맞춰야 한다.
     public var classroomAvailableFrom: HM
-    /// 퇴실을 조르기 시작할 시각.
+    /// 퇴실을 안내하기 시작할 시각.
     public var checkOutRemindFrom: HM
     /// 남은 시간이 이보다 적으면 깜빡인다.
     public var urgentThreshold: TimeInterval
@@ -72,13 +72,13 @@ public struct Schedule: Equatable, Codable, Sendable {
     public var classroomReminders: [HM]
     public var checkOutReminders: [HM]
 
-    // MARK: 매시간 사진
+    // MARK: 매시간 카메라 확인
 
-    /// 사진 마감 (정각 기준 분). 매시 이 분까지 찍어야 한다.
+    /// 카메라 확인 마감 (정각 기준 분). 매시 이 분까지 켜져 있어야 한다.
     public var photoDeadlineMinute: Int
-    /// 사진 알림 (정각 기준 분). 마지막 것은 최종 경고로 다루어진다.
+    /// 카메라 확인 알림 (정각 기준 분). 마지막 것은 최종 안내로 다루어진다.
     public var photoReminderMinutes: [Int]
-    /// 사진 마감까지 이보다 적게 남으면 깜빡인다.
+    /// 카메라 마감까지 이보다 적게 남으면 깜빡인다.
     /// 입실과 달리 창이 20분뿐이라 더 짧게 잡는다.
     public var photoUrgentThreshold: TimeInterval
 
@@ -121,7 +121,7 @@ public struct Schedule: Equatable, Codable, Sendable {
 
     public static let `default` = Schedule()
 
-    /// 사진을 찍어야 하는 시간대들.
+    /// 카메라를 켜 둬야 하는 시간대들.
     ///
     /// 수업 시간 안에서 점심시간대만 뺀다. 기본값 기준으로 9·10·11·13·14·15·16·17시 여덟 번.
     public var photoHours: [Int] {

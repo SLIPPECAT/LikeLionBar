@@ -140,8 +140,8 @@ final class MenuController: NSObject, NSMenuDelegate {
         let tally = "오늘 \(done)/\(total)"
 
         guard schedule.photoHours.contains(hour) else {
-            // 점심시간이거나 수업 시간 밖. 조를 일이 없다.
-            let item = NSMenuItem(title: "⬜️  카메라 — 지금은 해당 없음          \(tally)",
+            // 점심시간이거나 수업 시간 밖. 안내할 일이 없다.
+            let item = NSMenuItem(title: "⬜️  카메라 확인 — 지금은 해당 없음          \(tally)",
                                   action: nil, keyEquivalent: "")
             item.isEnabled = false
             return item
@@ -149,7 +149,7 @@ final class MenuController: NSObject, NSMenuDelegate {
 
         let isDone = state.isPhotoDone(hour: hour)
         let item = NSMenuItem(
-            title: "\(isDone ? "✅" : "⬜️")  \(hour)시 카메라          \(tally)",
+            title: "\(isDone ? "✅" : "⬜️")  카메라 확인          \(tally)",
             action: #selector(togglePhoto),
             keyEquivalent: ""
         )

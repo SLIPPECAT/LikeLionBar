@@ -19,7 +19,7 @@
 | 매시간 | 정각~20분 사이 카메라 켜두기 | 그 시간 미인정 |
 | 저녁 | QR 퇴실 | **그날 출석이 통째로 날아감** |
 
-문제는 자리에 앉아 있는데도 절차를 까먹어서 손해를 본다는 거였습니다. 저는 분명 수업을 듣고 있는데 퇴실을 안 눌러서 하루가 날아가면 억울하잖아요.
+자리에는 앉아 있는데 절차를 깜빡해서 출석이 안 잡히는 경우가 있더라고요. 수업은 다 들었는데 퇴실 버튼 하나 때문에 하루가 인정 안 되면 아쉽잖아요.
 
 알림 앱도 써봤는데, 배너는 한 번 넘기면 그걸로 끝이더라고요. 그런데 **메뉴바에서 지각까지 남은 시간이 초 단위로 줄어드는 건 이상하게 무시가 안 됩니다.** 이 앱은 그 점에 기대고 있습니다.
 
@@ -31,12 +31,12 @@
 
 | 표정 | 색 | 언제 | 메뉴바 | 아이콘 |
 |---|---|---|---|:---:|
-| 무표정 | 기본 | 조를 것이 없을 때, 주말, 쉬는 날 | 아이콘만 | <img src="docs/faces/neutral-quiet.png" width="34"> |
-| 무표정 | 🔴 빨강 | 입실 마감까지 아직 여유가 있을 때 | `22:59` | <img src="docs/faces/neutral-alert.png" width="34"> |
-| 화남 | 🔴 빨강 | 마감 5분 미만 · 카메라 마감 임박 | `04:59` 깜빡임 | <img src="docs/faces/angry-alert.png" width="34"> |
-| 울음 | 🔴 빨강 | 지각 확정 | `지각` | <img src="docs/faces/crying-alert.png" width="34"> |
-| 화남 | 🟠 주황 | 강의실 입장·퇴실을 아직 안 했을 때 | `강의실` `퇴실` | <img src="docs/faces/angry-warning.png" width="34"> |
-| 웃음 | 🟢 초록 | 오늘 할 일을 마침 | 아이콘만 | <img src="docs/faces/happy-done.png" width="34"> |
+| 무표정 | 기본 | 평소 · 주말 · 쉬는 날 | 아이콘만 | <img src="docs/faces/neutral-quiet.png" width="34"> |
+| 무표정 | 🔴 빨강 | 입실 마감까지 여유가 있을 때 | `22:59` | <img src="docs/faces/neutral-alert.png" width="34"> |
+| 화남 | 🔴 빨강 | 입실 마감 5분 전 · 카메라 마감 직전 | `04:59` 깜빡임 | <img src="docs/faces/angry-alert.png" width="34"> |
+| 울음 | 🔴 빨강 | 입실 마감을 지났을 때 | `지각` | <img src="docs/faces/crying-alert.png" width="34"> |
+| 화남 | 🟠 주황 | 강의실 입장이나 퇴실이 남았을 때 | `강의실` `퇴실` | <img src="docs/faces/angry-warning.png" width="34"> |
+| 웃음 | 🟢 초록 | 오늘 할 일을 마쳤을 때 | 아이콘만 | <img src="docs/faces/happy-done.png" width="34"> |
 
 ---
 
@@ -187,7 +187,7 @@ swift run CoreChecks          # 검사
 ./scripts/preview.sh 08:47:00                     # 입실 카운트다운
 ./scripts/preview.sh 09:04:30                     # 30초 뒤 깜빡임 전환
 ./scripts/preview.sh 09:11:00                     # 지각
-./scripts/preview.sh 09:30:00 checkIn             # 강의실 조르기
+./scripts/preview.sh 09:30:00 checkIn             # 강의실 안내
 ./scripts/preview.sh 17:58:00 checkIn,classroom   # 퇴실
 ./scripts/preview.sh 08:46:30 "" 30               # 30배속 (아침 21분 → 45초)
 ```

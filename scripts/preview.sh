@@ -4,7 +4,7 @@
 #   ./scripts/preview.sh 08:47:00              → 23:00 카운트다운
 #   ./scripts/preview.sh 09:04:30              → 30초 뒤 깜빡임으로 전환
 #   ./scripts/preview.sh 09:11:00              → 지각
-#   ./scripts/preview.sh 09:30:00 checkIn      → 강의실 입장 조르기
+#   ./scripts/preview.sh 09:30:00 checkIn      → 강의실 입장 안내
 #   ./scripts/preview.sh 17:58:00 checkIn,classroom → 퇴실
 #
 # 3번째 인자는 배속. 알림 4번을 실시간으로 보려면 21분이 걸리므로 압축해서 본다.

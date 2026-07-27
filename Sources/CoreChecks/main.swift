@@ -99,7 +99,7 @@ do {
 }
 
 do {
-    // 08:50 전이라 강의실도 아직 안 조르는 구간.
+    // 08:50 전이라 강의실도 아직 안 안내하는 구간.
     let p = show(monday(8, 45), [.checkIn])
     expectNil(p.text, "입실하면 카운트다운이 멈춘다")
     expect(p.tone, .done, "입실 후에는 초록")
@@ -114,9 +114,9 @@ do {
 }
 
 do {
-    // 버튼이 08:50부터 눌린다는 전제. 그 전에는 조르지 않는다.
+    // 버튼이 08:50부터 눌린다는 전제. 그 전에는 안내하지 않는다.
     let p = show(monday(8, 45), [.checkIn])
-    expectNil(p.text, "버튼 활성화 전에는 강의실을 조르지 않는다")
+    expectNil(p.text, "버튼 활성화 전에는 강의실을 안내하지 않는다")
 }
 
 do {
@@ -131,7 +131,7 @@ do {
     let e = ScheduleEngine(schedule: late, calendar: calendar)
     let now = monday(9, 10)
     let p = e.presentation(now: now, state: dayState([.checkIn], on: now))
-    expectNil(p.text, "활성화 시각을 늦추면 그 전에는 조르지 않는다")
+    expectNil(p.text, "활성화 시각을 늦추면 그 전에는 안내하지 않는다")
 }
 
 // MARK: - 점심 / 수업 중
@@ -146,7 +146,7 @@ do {
 
 do {
     let p = show(monday(17, 58), [.checkIn, .classroom])
-    expect(p.text, "퇴실", "17:57부터 퇴실을 조른다")
+    expect(p.text, "퇴실", "17:57부터 퇴실을 안내한다")
     expect(p.tone, .warning, "퇴실은 주황")
 }
 
@@ -179,7 +179,7 @@ do {
 
 do {
     let p = show(saturday(8, 47))
-    expectNil(p.text, "토요일에는 조르지 않는다")
+    expectNil(p.text, "토요일에는 안내하지 않는다")
     expect(p.tone, .quiet, "주말 색조")
 }
 
@@ -207,8 +207,8 @@ expect(show(monday(8, 47)).face, .neutral, "여유 있는 카운트다운은 아
 expect(show(monday(9, 6)).face, .angry, "5분 미만이면 화난다")
 expect(show(monday(9, 5)).face, .angry, "정확히 5분에서 화난다")
 expect(show(monday(9, 11)).face, .crying, "지각하면 운다")
-expect(show(monday(9, 30), [.checkIn]).face, .angry, "강의실 재촉은 화난 얼굴")
-expect(show(monday(17, 58), [.checkIn, .classroom]).face, .angry, "퇴실 재촉도 화난 얼굴")
+expect(show(monday(9, 30), [.checkIn]).face, .angry, "강의실 안내는 화난 얼굴")
+expect(show(monday(17, 58), [.checkIn, .classroom]).face, .angry, "퇴실 안내도 화난 얼굴")
 expect(show(monday(8, 45), [.checkIn]).face, .happy, "할 일을 마치면 웃는다")
 expect(show(monday(18, 5), [.checkIn, .classroom, .checkOut]).face, .happy, "퇴실까지 끝내면 웃는다")
 
@@ -265,7 +265,7 @@ expect(due(9, 8), [.checkIn(attempt: 4, isFinal: true)], "09:08은 최종 경고
 expect(due(8, 47, [.checkIn]).isEmpty, true, "입실했으면 입실 알림이 없다")
 expect(due(8, 52, [.checkIn]), [.classroom(isFinal: false)], "입실 후 강의실 알림 (1차)")
 expect(due(9, 5, [.checkIn]), [.classroom(isFinal: true)], "09:05는 마지막 강의실 안내")
-expect(due(8, 52).isEmpty, true, "입실 전에는 강의실을 조르지 않는다")
+expect(due(8, 52).isEmpty, true, "입실 전에는 강의실을 안내하지 않는다")
 expect(due(17, 57, [.checkIn, .classroom]), [.checkOut(attempt: 1)], "17:57에 퇴실 알림")
 expect(due(18, 15, [.checkIn, .classroom, .checkOut]).isEmpty, true, "퇴실했으면 알림이 없다")
 expect(due(8, 47, dayOff: true).isEmpty, true, "쉬는 날에는 알림이 없다")
@@ -287,9 +287,9 @@ do {
     expect(due(10, 20, done, photos: photosExcept(10)).isEmpty, true,
            "마감 시각 자체에는 알리지 않는다")
     expect(due(12, 2, done, photos: photosExcept(12)).isEmpty, true,
-           "점심시간대에는 사진을 조르지 않는다")
+           "점심시간대에는 사진을 안내하지 않는다")
     expect(due(18, 2, done, photos: []).isEmpty, true,
-           "수업이 끝난 뒤에는 조르지 않는다")
+           "수업이 끝난 뒤에는 안내하지 않는다")
     expect(due(15, 2, done, photos: photosExcept(15)), [.photo(hour: 15, isFinal: false)],
            "오후에도 시간마다 되풀이된다")
 

@@ -6,7 +6,7 @@ import Foundation
 /// 곁눈질만으로 상황이 전달되는 게 목적이다.
 public enum Face: String, Equatable, Sendable, CaseIterable {
     case neutral  // 조용하거나 아직 여유가 있음
-    case angry    // 재촉 (마감 임박, 강의실·퇴실 미처리)
+    case angry    // 마감이 임박했거나 남은 일이 있을 때
     case crying   // 지각 확정
     case happy    // 할 일을 마침
 }

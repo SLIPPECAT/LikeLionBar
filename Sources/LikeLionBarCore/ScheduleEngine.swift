@@ -14,7 +14,7 @@ public struct ScheduleEngine: Sendable {
     }
 
     public func presentation(now: Date, state: DayState) -> BarPresentation {
-        // 주말이거나 쉬는 날로 표시했으면 아무것도 조르지 않는다.
+        // 주말이거나 쉬는 날로 표시했으면 아무것도 안내하지 않는다.
         guard !isRestDay(now: now, state: state) else { return quiet(state) }
 
         let windowStart = time(schedule.checkInWindowStart, on: now)
@@ -45,14 +45,14 @@ public struct ScheduleEngine: Sendable {
             return BarPresentation(face: .angry, text: "퇴실", tone: .warning)
         }
 
-        // 3. 강의실 입장. 버튼이 실제로 활성화되는 시각부터 조른다.
+        // 3. 강의실 입장. 버튼이 실제로 활성화되는 시각부터 안내한다.
         if state.isDone(.checkIn), !state.isDone(.classroom),
            now >= time(schedule.classroomAvailableFrom, on: now), now < classEnd {
             return BarPresentation(face: .angry, text: "강의실", tone: .warning)
         }
 
         // 4. 이번 시간 사진. 매시 마감이 따로 있어 시간마다 되풀이된다.
-        //    첫 알림 때부터 띄우면 하루 종일 시끄러우므로 마지막 알림 이후에만 보여준다.
+        //    첫 알림 때부터 띄우면 하루 종일 붙어 있으므로 마지막 알림 이후에만 보여준다.
         if let photo = photoPresentation(now: now, state: state) {
             return photo
         }
@@ -60,7 +60,7 @@ public struct ScheduleEngine: Sendable {
         return quiet(state)
     }
 
-    /// 이번 시간 사진이 남았을 때의 카운트다운. 아직 조를 때가 아니면 nil.
+    /// 이번 시간 카메라 확인이 남았을 때의 카운트다운. 아직 알릴 때가 아니면 nil.
     private func photoPresentation(now: Date, state: DayState) -> BarPresentation? {
         let hour = calendar.component(.hour, from: now)
         guard schedule.photoHours.contains(hour), !state.isPhotoDone(hour: hour) else {
@@ -83,7 +83,7 @@ public struct ScheduleEngine: Sendable {
         )
     }
 
-    /// 조를 것이 없는 상태. 오늘 뭔가 했으면 웃고, 아니면 무표정.
+    /// 안내할 것이 없는 상태. 오늘 뭔가 했으면 웃고, 아니면 무표정.
     private func quiet(_ state: DayState) -> BarPresentation {
         state.hasAnyProgress
             ? BarPresentation(face: .happy, tone: .done)
