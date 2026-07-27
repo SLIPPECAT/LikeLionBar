@@ -29,14 +29,14 @@
 
 숫자를 읽지 않아도 곁눈질만으로 상황이 전달되게 만들었습니다. 시간이 촉박해질수록 사자가 **무표정 → 화남 → 울음**으로 악화되고, 할 일을 마치면 웃습니다.
 
-| | 표정 | 언제 | 메뉴바 |
-|:---:|---|---|---|
-| <img src="docs/faces/neutral-quiet.png" width="34"> | 무표정 | 조를 것이 없을 때, 주말, 쉬는 날 | 아이콘만 |
-| <img src="docs/faces/neutral-alert.png" width="34"> | 무표정 · 빨강 | 입실 마감까지 아직 여유가 있을 때 | `22:59` |
-| <img src="docs/faces/angry-alert.png" width="34"> | 화남 · 빨강 | 마감 5분 미만 · 카메라 마감 임박 | `04:59` 깜빡임 |
-| <img src="docs/faces/crying-alert.png" width="34"> | 울음 · 빨강 | 지각 확정 | `지각` |
-| <img src="docs/faces/angry-warning.png" width="34"> | 화남 · 주황 | 강의실 입장·퇴실을 아직 안 했을 때 | `강의실` `퇴실` |
-| <img src="docs/faces/happy-done.png" width="34"> | 웃음 · 초록 | 오늘 할 일을 마침 | 아이콘만 |
+| 표정 | 색 | 언제 | 메뉴바 | 아이콘 |
+|---|---|---|---|:---:|
+| 무표정 | 기본 | 조를 것이 없을 때, 주말, 쉬는 날 | 아이콘만 | <img src="docs/faces/neutral-quiet.png" width="34"> |
+| 무표정 | 🔴 빨강 | 입실 마감까지 아직 여유가 있을 때 | `22:59` | <img src="docs/faces/neutral-alert.png" width="34"> |
+| 화남 | 🔴 빨강 | 마감 5분 미만 · 카메라 마감 임박 | `04:59` 깜빡임 | <img src="docs/faces/angry-alert.png" width="34"> |
+| 울음 | 🔴 빨강 | 지각 확정 | `지각` | <img src="docs/faces/crying-alert.png" width="34"> |
+| 화남 | 🟠 주황 | 강의실 입장·퇴실을 아직 안 했을 때 | `강의실` `퇴실` | <img src="docs/faces/angry-warning.png" width="34"> |
+| 웃음 | 🟢 초록 | 오늘 할 일을 마침 | 아이콘만 | <img src="docs/faces/happy-done.png" width="34"> |
 
 ---
 
