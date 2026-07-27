@@ -1,0 +1,7 @@
+# SwiftPM 빌드 산출물
+.build/
+
+# .app 번들과 배포용 zip — 릴리스에 올리므로 저장소에는 두지 않는다
+build/
+
+.DS_Store
