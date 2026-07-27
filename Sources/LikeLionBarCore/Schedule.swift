@@ -68,7 +68,8 @@ public struct Schedule: Equatable, Codable, Sendable {
 
     /// 입실 알림 시각들. 마지막 것은 최종 경고로 다루어진다.
     public var checkInReminders: [HM]
-    public var classroomReminder: HM
+    /// 강의실 입장 알림들. 한 번만 두면 놓쳤을 때 되돌릴 방법이 없다.
+    public var classroomReminders: [HM]
     public var checkOutReminders: [HM]
 
     // MARK: 매시간 사진
@@ -93,7 +94,7 @@ public struct Schedule: Equatable, Codable, Sendable {
         checkOutRemindFrom: HM = HM(17, 57),
         urgentThreshold: TimeInterval = 5 * 60,
         checkInReminders: [HM] = [HM(8, 47), HM(8, 56), HM(9, 3), HM(9, 8)],
-        classroomReminder: HM = HM(8, 52),
+        classroomReminders: [HM] = [HM(8, 52), HM(9, 5)],
         checkOutReminders: [HM] = [HM(17, 57), HM(18, 5), HM(18, 15)],
         photoDeadlineMinute: Int = 20,
         photoReminderMinutes: [Int] = [2, 12],
@@ -109,7 +110,7 @@ public struct Schedule: Equatable, Codable, Sendable {
         self.checkOutRemindFrom = checkOutRemindFrom
         self.urgentThreshold = urgentThreshold
         self.checkInReminders = checkInReminders
-        self.classroomReminder = classroomReminder
+        self.classroomReminders = classroomReminders
         self.checkOutReminders = checkOutReminders
         self.photoDeadlineMinute = photoDeadlineMinute
         self.photoReminderMinutes = photoReminderMinutes

@@ -60,7 +60,12 @@ final class MenuController: NSObject, NSMenuDelegate {
         header("오늘 · \(dayFormatter.string(from: now))")
 
         if state.isDayOff {
-            header("쉬는 날로 표시됨", italic: true)
+            // 자동으로 켜진 거라면 왜 켜졌는지 알려줘야 되돌릴 판단을 할 수 있다.
+            if let reason = state.autoDayOffReason {
+                header("\(reason) — 공휴일이라 쉬는 날 처리됨", italic: true)
+            } else {
+                header("쉬는 날로 표시됨", italic: true)
+            }
         }
 
         menu.addItem(.separator())

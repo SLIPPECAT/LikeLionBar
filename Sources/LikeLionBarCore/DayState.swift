@@ -31,17 +31,28 @@ public struct DayState: Equatable, Codable, Sendable {
     public var donePhotoHours: Set<Int>
     /// 공휴일·개인사정 등으로 오늘은 쉬는 날.
     public var isDayOff: Bool
+    /// 자동으로 쉬는 날 처리된 사유 (예: "설날"). 직접 켠 경우엔 nil.
+    public var autoDayOffReason: String?
+    /// 사용자가 자동 처리를 직접 되돌렸는지.
+    ///
+    /// 부트캠프가 공휴일에도 수업하는 경우가 있다. 한 번 되돌렸으면 그날은
+    /// 다시 자동으로 켜지 않는다 — 껐는데 계속 켜지면 고장으로 보인다.
+    public var dayOffOverridden: Bool
 
     public init(
         day: DateComponents,
         completed: [Step: Date] = [:],
         donePhotoHours: Set<Int> = [],
-        isDayOff: Bool = false
+        isDayOff: Bool = false,
+        autoDayOffReason: String? = nil,
+        dayOffOverridden: Bool = false
     ) {
         self.day = day
         self.completed = completed
         self.donePhotoHours = donePhotoHours
         self.isDayOff = isDayOff
+        self.autoDayOffReason = autoDayOffReason
+        self.dayOffOverridden = dayOffOverridden
     }
 
     // 이전 버전이 저장한 state.json에는 donePhotoHours가 없다. 통째로 못 읽으면
@@ -52,6 +63,8 @@ public struct DayState: Equatable, Codable, Sendable {
         completed = try c.decodeIfPresent([Step: Date].self, forKey: .completed) ?? [:]
         donePhotoHours = try c.decodeIfPresent(Set<Int>.self, forKey: .donePhotoHours) ?? []
         isDayOff = try c.decodeIfPresent(Bool.self, forKey: .isDayOff) ?? false
+        autoDayOffReason = try c.decodeIfPresent(String.self, forKey: .autoDayOffReason)
+        dayOffOverridden = try c.decodeIfPresent(Bool.self, forKey: .dayOffOverridden) ?? false
     }
 
     public func isDone(_ step: Step) -> Bool { completed[step] != nil }

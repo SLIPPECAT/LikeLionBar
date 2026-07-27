@@ -48,7 +48,7 @@ final class SettingsModel: ObservableObject {
     @Published var checkOutRemindFrom = ""
 
     @Published var checkInReminders = ""
-    @Published var classroomReminder = ""
+    @Published var classroomReminders = ""
     @Published var checkOutReminders = ""
     @Published var photoDeadlineMinute = ""
     @Published var photoReminderMinutes = ""
@@ -56,6 +56,7 @@ final class SettingsModel: ObservableObject {
     @Published var lunchEnd = ""
 
     @Published var notificationSound = false
+    @Published var useHolidayCalendar = true
     @Published var launchAtLogin = false
     @Published var customReminders: [EditableReminder] = []
     @Published var problem: String?
@@ -76,7 +77,7 @@ final class SettingsModel: ObservableObject {
         checkOutRemindFrom = s.checkOutRemindFrom.text
 
         checkInReminders = HM.text(from: s.checkInReminders)
-        classroomReminder = s.classroomReminder.text
+        classroomReminders = HM.text(from: s.classroomReminders)
         checkOutReminders = HM.text(from: s.checkOutReminders)
         photoDeadlineMinute = String(s.photoDeadlineMinute)
         photoReminderMinutes = s.photoReminderMinutes.map(String.init).joined(separator: ", ")
@@ -84,6 +85,7 @@ final class SettingsModel: ObservableObject {
         lunchEnd = s.lunchEnd.text
 
         notificationSound = Settings.notificationSound
+        useHolidayCalendar = Settings.useHolidayCalendar
         launchAtLogin = LoginItem.isEnabled
 
         // 지난 일회성 알림은 목록에서 치우고 보여준다.
@@ -118,7 +120,7 @@ final class SettingsModel: ObservableObject {
             ("수업 시작", classStart),
             ("수업 종료", classEnd),
             ("퇴실 표시 시작", checkOutRemindFrom),
-            ("강의실 알림", classroomReminder),
+            
             ("점심 시작", lunchStart),
             ("점심 종료", lunchEnd),
         ]
@@ -128,6 +130,10 @@ final class SettingsModel: ObservableObject {
         }
         guard !HM.list(from: checkInReminders).isEmpty else {
             problem = "입실 알림을 최소 하나는 남겨두세요"
+            return
+        }
+        guard !HM.list(from: classroomReminders).isEmpty else {
+            problem = "강의실 알림을 최소 하나는 남겨두세요"
             return
         }
         guard !HM.list(from: checkOutReminders).isEmpty else {
@@ -161,7 +167,7 @@ final class SettingsModel: ObservableObject {
             classroomAvailableFrom: HM(text: classroomAvailableFrom)!,
             checkOutRemindFrom: HM(text: checkOutRemindFrom)!,
             checkInReminders: HM.list(from: checkInReminders),
-            classroomReminder: HM(text: classroomReminder)!,
+            classroomReminders: HM.list(from: classroomReminders),
             checkOutReminders: HM.list(from: checkOutReminders),
             photoDeadlineMinute: deadline,
             photoReminderMinutes: photoMinutes,
@@ -169,6 +175,7 @@ final class SettingsModel: ObservableObject {
             lunchEnd: HM(text: lunchEnd)!
         )
         Settings.notificationSound = notificationSound
+        Settings.useHolidayCalendar = useHolidayCalendar
 
         // 빈 줄은 추가만 하고 안 채운 것이니 조용히 버린다.
         let filled = customReminders.filter {
@@ -231,7 +238,7 @@ struct SettingsView: View {
 
                 Section("알림") {
                     field("입실 알림", $model.checkInReminders, prompt: "08:47, 08:56")
-                    time("강의실 알림", $model.classroomReminder)
+                    field("강의실 알림", $model.classroomReminders, prompt: "08:52, 09:05")
                     field("퇴실 알림", $model.checkOutReminders, prompt: "17:57, 18:05")
                     Toggle("알림에 소리 사용", isOn: $model.notificationSound)
                     Text("여러 개는 쉼표로 구분합니다. 소리를 끄면 배너만 뜹니다.")
@@ -283,6 +290,10 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("공휴일에 자동으로 쉬기", isOn: $model.useHolidayCalendar)
+                    Text("공휴일 목록을 인터넷에서 받아옵니다(연도와 국가 코드만 전송). 부트캠프가 공휴일에 수업하면 메뉴에서 직접 해제하세요.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     Toggle("로그인 시 자동 시작", isOn: $model.launchAtLogin)
                 }
             }

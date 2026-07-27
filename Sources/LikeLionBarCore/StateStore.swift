@@ -82,11 +82,28 @@ public final class StateStore {
         save()
     }
 
+    /// 사용자가 직접 켜고 끄는 경우. 자동 처리를 되돌린 것으로 기록해 다시 켜지지 않게 한다.
     public func setDayOff(_ isDayOff: Bool, at date: Date) {
         guard state.isDayOff != isDayOff else { return }
         state.isDayOff = isDayOff
+        state.autoDayOffReason = nil
+        state.dayOffOverridden = true
         append(step: "-", action: isDayOff ? "dayOff" : "dayOn", at: date)
         save()
+    }
+
+    /// 공휴일 등으로 자동 처리하는 경우.
+    ///
+    /// 사용자가 이미 손댔으면 건드리지 않는다. 부트캠프가 공휴일에도 수업하는 일이
+    /// 있어서, 껐는데 자동으로 다시 켜지면 고장으로 보인다.
+    @discardableResult
+    public func applyAutoDayOff(reason: String, at date: Date) -> Bool {
+        guard !state.dayOffOverridden, !state.isDayOff else { return false }
+        state.isDayOff = true
+        state.autoDayOffReason = reason
+        append(step: "-", action: "autoDayOff(\(reason))", at: date)
+        save()
+        return true
     }
 
     // MARK: - 입출력

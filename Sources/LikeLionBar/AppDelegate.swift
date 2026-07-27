@@ -7,6 +7,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var notifier: Notifier?
     private var store: StateStore?
     private let settingsWindow = SettingsWindowController()
+    private let holidays = HolidayService()
+    /// 날짜가 바뀌면 공휴일 판단을 다시 해야 한다.
+    private var lastCheckedDay: DateComponents?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let nowProvider = DebugClock.makeNowProvider()
@@ -24,9 +27,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let statusController = StatusItemController(
             engine: ScheduleEngine(schedule: Settings.schedule),
             nowProvider: nowProvider,
-            stateProvider: {
+            stateProvider: { [weak self] in
                 // 자정을 넘겨 켜둔 채로 다음날을 맞는 경우를 여기서 잡는다.
                 store.rollOverIfNeeded(now: nowProvider())
+                self?.applyHolidayIfNeeded(store: store, now: nowProvider())
                 return store.state
             }
         )
@@ -86,6 +90,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 메뉴바 클릭을 자동화하기 어려워 설정 창 확인용 통로를 둔다.
         if ProcessInfo.processInfo.environment["LIKELIONBAR_OPEN_SETTINGS"] != nil {
             settingsWindow.show()
+        }
+    }
+
+    /// 오늘이 공휴일이면 쉬는 날로 제안한다. 하루에 한 번만 판단한다.
+    private func applyHolidayIfNeeded(store: StateStore, now: Date) {
+        guard Settings.useHolidayCalendar else { return }
+        let today = Calendar.current.dateComponents([.year, .month, .day], from: now)
+        guard today != lastCheckedDay else { return }
+        lastCheckedDay = today
+
+        holidays.refreshIfNeeded(now: now) { [weak self] in
+            self?.lastCheckedDay = nil  // 새로 받아왔으니 다시 판단
+        }
+        guard let holiday = holidays.holiday(on: now) else { return }
+        if store.applyAutoDayOff(reason: holiday.name, at: now) {
+            Log.write("공휴일(\(holiday.name))이라 쉬는 날로 처리")
         }
     }
 

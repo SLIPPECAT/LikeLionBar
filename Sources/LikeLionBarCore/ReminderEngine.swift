@@ -4,7 +4,7 @@ import Foundation
 public enum Reminder: Equatable, Sendable {
     /// `attempt`는 1부터. `isFinal`이면 마지막 경고다.
     case checkIn(attempt: Int, isFinal: Bool)
-    case classroom
+    case classroom(isFinal: Bool)
     /// 매시간 사진. `hour`는 대상 시간대.
     case photo(hour: Int, isFinal: Bool)
     case checkOut(attempt: Int)
@@ -53,9 +53,12 @@ public struct ReminderEngine: Sendable {
         }
 
         // 입실을 안 했으면 강의실을 조를 차례가 아니다.
-        if state.isDone(.checkIn), !state.isDone(.classroom),
-           crossed(schedule.classroomReminder, from: from, to: to) {
-            due.append(.classroom)
+        if state.isDone(.checkIn), !state.isDone(.classroom) {
+            let last = schedule.classroomReminders.count - 1
+            for (index, time) in schedule.classroomReminders.enumerated()
+            where crossed(time, from: from, to: to) {
+                due.append(.classroom(isFinal: index == last))
+            }
         }
 
         if !state.isDone(.checkOut) {
@@ -111,7 +114,7 @@ extension Reminder {
     public var title: String {
         switch self {
         case .checkIn(_, let isFinal): return isFinal ? "지금 안 하면 지각입니다" : "QR 입실"
-        case .classroom:               return "강의실 입장"
+        case .classroom(let isFinal):  return isFinal ? "강의실 입장 (마지막 안내)" : "강의실 입장"
         case .photo(let hour, _):      return "\(hour)시 사진"
         case .checkOut:                return "QR 퇴실"
         case .custom(let title):       return title

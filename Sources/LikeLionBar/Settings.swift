@@ -16,6 +16,7 @@ enum Settings {
         static let chromeProfile = "chromeProfile"
         static let notificationSound = "notificationSound"
         static let customReminders = "customReminders"
+        static let useHolidayCalendar = "useHolidayCalendar"
 
         static let photoDeadlineMinute = "photoDeadlineMinute"
         static let photoReminderMinutes = "photoReminderMinutes"
@@ -28,7 +29,7 @@ enum Settings {
         static let checkOutRemindFrom = "checkOutRemindFrom"
 
         static let checkInReminders = "checkInReminders"
-        static let classroomReminder = "classroomReminder"
+        static let classroomReminders = "classroomReminders"
         static let checkOutReminders = "checkOutReminders"
         static let lunchStart = "lunchStart"
         static let lunchEnd = "lunchEnd"
@@ -36,10 +37,16 @@ enum Settings {
         static let allSchedule = [
             checkInWindowStart, lateDeadline, classStart, classEnd,
             classroomAvailableFrom, checkOutRemindFrom, checkInReminders,
-            classroomReminder, checkOutReminders,
+            classroomReminders, checkOutReminders,
             photoDeadlineMinute, photoReminderMinutes,
             lunchStart, lunchEnd,
         ]
+    }
+
+    /// 공휴일을 받아와 자동으로 쉬는 날 처리할지. 끄면 네트워크 요청도 하지 않는다.
+    static var useHolidayCalendar: Bool {
+        get { defaults.object(forKey: Key.useHolidayCalendar) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.useHolidayCalendar) }
     }
 
     /// 기본은 팝업만. 소리는 켠 사람만 받는다.
@@ -95,7 +102,7 @@ enum Settings {
                 classroomAvailableFrom: time(Key.classroomAvailableFrom, d.classroomAvailableFrom),
                 checkOutRemindFrom: time(Key.checkOutRemindFrom, d.checkOutRemindFrom),
                 checkInReminders: times(Key.checkInReminders, d.checkInReminders),
-                classroomReminder: time(Key.classroomReminder, d.classroomReminder),
+                classroomReminders: times(Key.classroomReminders, d.classroomReminders),
                 checkOutReminders: times(Key.checkOutReminders, d.checkOutReminders),
                 photoDeadlineMinute: defaults.object(forKey: Key.photoDeadlineMinute) as? Int
                     ?? d.photoDeadlineMinute,
@@ -112,7 +119,7 @@ enum Settings {
             defaults.set(newValue.classroomAvailableFrom.text, forKey: Key.classroomAvailableFrom)
             defaults.set(newValue.checkOutRemindFrom.text, forKey: Key.checkOutRemindFrom)
             defaults.set(HM.text(from: newValue.checkInReminders), forKey: Key.checkInReminders)
-            defaults.set(newValue.classroomReminder.text, forKey: Key.classroomReminder)
+            defaults.set(HM.text(from: newValue.classroomReminders), forKey: Key.classroomReminders)
             defaults.set(HM.text(from: newValue.checkOutReminders), forKey: Key.checkOutReminders)
             defaults.set(newValue.photoDeadlineMinute, forKey: Key.photoDeadlineMinute)
             defaults.set(

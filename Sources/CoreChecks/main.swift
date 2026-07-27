@@ -263,7 +263,8 @@ func photosExcept(_ hour: Int) -> Set<Int> { allPhotoHours.subtracting([hour]) }
 expect(due(8, 47), [.checkIn(attempt: 1, isFinal: false)], "08:47에 첫 입실 알림")
 expect(due(9, 8), [.checkIn(attempt: 4, isFinal: true)], "09:08은 최종 경고")
 expect(due(8, 47, [.checkIn]).isEmpty, true, "입실했으면 입실 알림이 없다")
-expect(due(8, 52, [.checkIn]), [.classroom], "입실 후 강의실 알림")
+expect(due(8, 52, [.checkIn]), [.classroom(isFinal: false)], "입실 후 강의실 알림 (1차)")
+expect(due(9, 5, [.checkIn]), [.classroom(isFinal: true)], "09:05는 마지막 강의실 안내")
 expect(due(8, 52).isEmpty, true, "입실 전에는 강의실을 조르지 않는다")
 expect(due(17, 57, [.checkIn, .classroom]), [.checkOut(attempt: 1)], "17:57에 퇴실 알림")
 expect(due(18, 15, [.checkIn, .classroom, .checkOut]).isEmpty, true, "퇴실했으면 알림이 없다")
@@ -436,6 +437,56 @@ do {
     expect(result.count, 2, "같은 시각의 출결 알림과 내 알림이 둘 다 나온다")
     expect(result.contains(.custom(title: "약 먹기")), true, "내 알림이 포함된다")
     expect(result.contains(.checkIn(attempt: 1, isFinal: false)), true, "입실 알림도 포함된다")
+}
+
+// MARK: - 공휴일 자동 처리
+
+do {
+    let cal = HolidayCalendar(year: 2026, holidays: [
+        Holiday(date: "2026-02-16", name: "설날"),
+        Holiday(date: "2026-03-02", name: "3·1절"),
+    ])
+    expect(cal.holiday(on: makeDate(2026, 2, 16, 9, 0), calendar: calendar)?.name, "설날",
+           "그날이면 이름을 돌려준다")
+    expectNil(cal.holiday(on: makeDate(2026, 2, 17, 9, 0), calendar: calendar),
+              "공휴일이 아니면 nil")
+    expect(cal.covers(makeDate(2026, 12, 31, 9, 0), calendar: calendar), true,
+           "같은 해는 판단할 수 있다")
+    expect(cal.covers(makeDate(2027, 1, 1, 9, 0), calendar: calendar), false,
+           "다른 해는 판단할 수 없다")
+    expect(Holiday.key(for: makeDate(2026, 3, 2, 23, 59), calendar: calendar), "2026-03-02",
+           "날짜 키는 시각과 무관하다")
+}
+
+do {
+    let tmp = FileManager.default.temporaryDirectory
+        .appendingPathComponent("LikeLionBarHoliday-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: tmp) }
+    let day = makeDate(2026, 3, 2, 9, 0)
+
+    let a = StateStore(directory: tmp, calendar: calendar, now: day)
+    expect(a.applyAutoDayOff(reason: "3·1절", at: day), true, "공휴일이면 자동으로 쉬는 날")
+    expect(a.state.isDayOff, true, "쉬는 날이 켜진다")
+    expect(a.state.autoDayOffReason, "3·1절", "사유가 남는다")
+
+    // 부트캠프가 공휴일에도 수업하는 경우: 직접 끄면 다시 안 켜져야 한다
+    a.setDayOff(false, at: day)
+    expect(a.state.isDayOff, false, "직접 끄면 꺼진다")
+    expect(a.state.dayOffOverridden, true, "되돌린 것으로 기록된다")
+    expect(a.applyAutoDayOff(reason: "3·1절", at: day), false, "되돌린 뒤에는 다시 안 켠다")
+    expect(a.state.isDayOff, false, "꺼진 상태가 유지된다")
+
+    // 재시작해도 되돌린 기록이 유지된다
+    let b = StateStore(directory: tmp, calendar: calendar, now: day)
+    expect(b.state.dayOffOverridden, true, "되돌린 기록이 재시작 후에도 남는다")
+    expect(b.applyAutoDayOff(reason: "3·1절", at: day), false, "재시작해도 다시 안 켠다")
+
+    // 이미 직접 켜둔 날은 자동 처리가 덮어쓰지 않는다
+    let c = StateStore(directory: tmp, calendar: calendar, now: makeDate(2026, 3, 3, 9, 0))
+    c.setDayOff(true, at: makeDate(2026, 3, 3, 9, 0))
+    expect(c.applyAutoDayOff(reason: "아무거나", at: makeDate(2026, 3, 3, 9, 0)), false,
+           "이미 쉬는 날이면 사유를 덮어쓰지 않는다")
+    expectNil(c.state.autoDayOffReason, "직접 켠 것은 자동 사유가 없다")
 }
 
 // MARK: - HM 문자열 (설정 창 입력)
