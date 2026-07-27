@@ -71,8 +71,16 @@ public struct Schedule: Equatable, Codable, Sendable {
     public var classroomReminder: HM
     public var checkOutReminders: [HM]
 
-    /// 카메라 확인 알림 간격(분). 0이면 끈다.
-    public var cameraIntervalMinutes: Int
+    // MARK: 매시간 사진
+
+    /// 사진 마감 (정각 기준 분). 매시 이 분까지 찍어야 한다.
+    public var photoDeadlineMinute: Int
+    /// 사진 알림 (정각 기준 분). 마지막 것은 최종 경고로 다루어진다.
+    public var photoReminderMinutes: [Int]
+    /// 사진 마감까지 이보다 적게 남으면 깜빡인다.
+    /// 입실과 달리 창이 20분뿐이라 더 짧게 잡는다.
+    public var photoUrgentThreshold: TimeInterval
+
     public var lunchStart: HM
     public var lunchEnd: HM
 
@@ -87,7 +95,9 @@ public struct Schedule: Equatable, Codable, Sendable {
         checkInReminders: [HM] = [HM(8, 47), HM(8, 56), HM(9, 3), HM(9, 8)],
         classroomReminder: HM = HM(8, 52),
         checkOutReminders: [HM] = [HM(17, 57), HM(18, 5), HM(18, 15)],
-        cameraIntervalMinutes: Int = 40,
+        photoDeadlineMinute: Int = 20,
+        photoReminderMinutes: [Int] = [2, 12],
+        photoUrgentThreshold: TimeInterval = 2 * 60,
         lunchStart: HM = HM(12, 0),
         lunchEnd: HM = HM(13, 0)
     ) {
@@ -101,34 +111,22 @@ public struct Schedule: Equatable, Codable, Sendable {
         self.checkInReminders = checkInReminders
         self.classroomReminder = classroomReminder
         self.checkOutReminders = checkOutReminders
-        self.cameraIntervalMinutes = cameraIntervalMinutes
+        self.photoDeadlineMinute = photoDeadlineMinute
+        self.photoReminderMinutes = photoReminderMinutes
+        self.photoUrgentThreshold = photoUrgentThreshold
         self.lunchStart = lunchStart
         self.lunchEnd = lunchEnd
     }
 
     public static let `default` = Schedule()
 
-    /// 카메라 확인 알림 시각들.
+    /// 사진을 찍어야 하는 시간대들.
     ///
-    /// 쉬는시간이 불규칙해서 "쉬는시간 끝"에 맞출 수가 없다. 대신 일정 간격으로 돌리고
-    /// 알림에 스누즈를 붙여 사용자가 넘길 수 있게 한다. 점심시간은 건너뛴다.
-    public var cameraReminderTimes: [HM] {
-        guard cameraIntervalMinutes > 0 else { return [] }
-
-        var times: [HM] = []
-        var minute = classStart.minutesSinceMidnight + cameraIntervalMinutes
-        let end = classEnd.minutesSinceMidnight
-        let lunch = lunchStart.minutesSinceMidnight...lunchEnd.minutesSinceMidnight
-
-        while minute < end {
-            if lunch.contains(minute) {
-                // 점심이 끝나는 시점부터 간격을 다시 센다.
-                minute = lunchEnd.minutesSinceMidnight + cameraIntervalMinutes
-                continue
-            }
-            times.append(HM(minutesSinceMidnight: minute))
-            minute += cameraIntervalMinutes
+    /// 수업 시간 안에서 점심시간대만 뺀다. 기본값 기준으로 9·10·11·13·14·15·16·17시 여덟 번.
+    public var photoHours: [Int] {
+        guard photoDeadlineMinute > 0 else { return [] }
+        return (classStart.hour..<classEnd.hour).filter { hour in
+            !(hour >= lunchStart.hour && hour < lunchEnd.hour)
         }
-        return times
     }
 }

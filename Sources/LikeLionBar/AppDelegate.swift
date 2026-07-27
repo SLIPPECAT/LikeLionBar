@@ -35,13 +35,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onChange: { [weak statusController] in statusController?.refresh() }
         )
         menuController.onOpenSettings = { [weak self] in self?.settingsWindow.show() }
+        menuController.schedule = Settings.schedule
+        menuController.customReminders = Settings.customReminders
 
         let notifier = Notifier(
-            engine: ReminderEngine(schedule: Settings.schedule),
+            engine: ReminderEngine(
+                schedule: Settings.schedule, custom: Settings.customReminders
+            ),
             nowProvider: nowProvider,
             stateProvider: { store.state },
             onComplete: { [weak statusController] step in
-                store.complete(step, at: nowProvider())
+                let now = nowProvider()
+                if step == .camera {
+                    // 사진은 하루 단위가 아니라 지금 시간대의 것을 처리한다.
+                    store.completePhoto(hour: Calendar.current.component(.hour, from: now), at: now)
+                } else {
+                    store.complete(step, at: now)
+                }
                 statusController?.refresh()
             },
             onOpenBoard: { [weak menuController] in menuController?.launcher.openBoard() }
@@ -79,9 +89,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 설정을 저장하면 엔진을 새 값으로 갈아끼운다. 앱을 다시 켤 필요가 없어야 한다.
     @objc private func applySettings() {
         let schedule = Settings.schedule
+        let custom = Settings.customReminders
         statusController?.engine = ScheduleEngine(schedule: schedule)
-        notifier?.engine = ReminderEngine(schedule: schedule)
+        notifier?.engine = ReminderEngine(schedule: schedule, custom: custom)
         menuController?.launcher = makeLauncher()
+        menuController?.schedule = schedule
+        menuController?.customReminders = custom
         statusController?.refresh()
         Log.write("설정 적용됨")
     }

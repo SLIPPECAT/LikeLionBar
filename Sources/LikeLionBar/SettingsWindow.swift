@@ -2,6 +2,36 @@ import AppKit
 import SwiftUI
 import LikeLionBarCore
 
+/// 편집 중인 커스텀 알림 한 줄.
+///
+/// 시각을 문자열로 들고 있다가 저장할 때 한 번에 검증한다.
+/// 타이핑 도중에 값이 튀면 입력이 불쾌해진다.
+struct EditableReminder: Identifiable, Equatable {
+    var id: UUID
+    var timeText: String
+    var title: String
+    var isDaily: Bool
+    /// 일회성일 때 원래 날짜. 편집해도 그대로 이어간다.
+    var day: DateComponents?
+
+    init(from reminder: CustomReminder) {
+        id = reminder.id
+        timeText = reminder.time.text
+        title = reminder.title
+        isDaily = reminder.isDaily
+        day = reminder.day
+    }
+
+    /// 새로 추가하는 항목은 오늘 하루짜리로 시작한다.
+    init(newOn date: Date, calendar: Calendar) {
+        id = UUID()
+        timeText = ""
+        title = ""
+        isDaily = false
+        day = calendar.dateComponents([.year, .month, .day], from: date)
+    }
+}
+
 /// 설정 창의 편집 상태.
 ///
 /// 시각은 문자열로 들고 있다가 저장할 때 한 번에 검증한다.
@@ -20,11 +50,14 @@ final class SettingsModel: ObservableObject {
     @Published var checkInReminders = ""
     @Published var classroomReminder = ""
     @Published var checkOutReminders = ""
-    @Published var cameraInterval = ""
+    @Published var photoDeadlineMinute = ""
+    @Published var photoReminderMinutes = ""
     @Published var lunchStart = ""
     @Published var lunchEnd = ""
 
+    @Published var notificationSound = false
     @Published var launchAtLogin = false
+    @Published var customReminders: [EditableReminder] = []
     @Published var problem: String?
     @Published var savedAt: Date?
 
@@ -45,12 +78,27 @@ final class SettingsModel: ObservableObject {
         checkInReminders = HM.text(from: s.checkInReminders)
         classroomReminder = s.classroomReminder.text
         checkOutReminders = HM.text(from: s.checkOutReminders)
-        cameraInterval = String(s.cameraIntervalMinutes)
+        photoDeadlineMinute = String(s.photoDeadlineMinute)
+        photoReminderMinutes = s.photoReminderMinutes.map(String.init).joined(separator: ", ")
         lunchStart = s.lunchStart.text
         lunchEnd = s.lunchEnd.text
 
+        notificationSound = Settings.notificationSound
         launchAtLogin = LoginItem.isEnabled
+
+        // 지난 일회성 알림은 목록에서 치우고 보여준다.
+        Settings.pruneExpiredReminders()
+        customReminders = Settings.customReminders.map(EditableReminder.init(from:))
+
         problem = nil
+    }
+
+    func addReminder() {
+        customReminders.append(EditableReminder(newOn: Date(), calendar: .current))
+    }
+
+    func removeReminder(_ id: UUID) {
+        customReminders.removeAll { $0.id == id }
     }
 
     func restoreDefaults() {
@@ -86,8 +134,20 @@ final class SettingsModel: ObservableObject {
             problem = "퇴실 알림을 최소 하나는 남겨두세요"
             return
         }
-        guard let interval = Int(cameraInterval.trimmingCharacters(in: .whitespaces)), interval >= 0 else {
-            problem = "카메라 간격은 0 이상의 숫자여야 합니다 (0이면 끔)"
+        guard let deadline = Int(photoDeadlineMinute.trimmingCharacters(in: .whitespaces)),
+              (0..<60).contains(deadline) else {
+            problem = "사진 마감은 0~59 사이의 분이어야 합니다 (0이면 끔)"
+            return
+        }
+        let photoMinutes = photoReminderMinutes.split(separator: ",")
+            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+            .filter { (0..<60).contains($0) }
+        guard !photoMinutes.isEmpty else {
+            problem = "사진 알림을 최소 하나는 남겨두세요 (예: 2, 12)"
+            return
+        }
+        guard photoMinutes.allSatisfy({ $0 < deadline }) else {
+            problem = "사진 알림은 마감(\(deadline)분)보다 앞이어야 합니다"
             return
         }
 
@@ -103,10 +163,36 @@ final class SettingsModel: ObservableObject {
             checkInReminders: HM.list(from: checkInReminders),
             classroomReminder: HM(text: classroomReminder)!,
             checkOutReminders: HM.list(from: checkOutReminders),
-            cameraIntervalMinutes: interval,
+            photoDeadlineMinute: deadline,
+            photoReminderMinutes: photoMinutes,
             lunchStart: HM(text: lunchStart)!,
             lunchEnd: HM(text: lunchEnd)!
         )
+        Settings.notificationSound = notificationSound
+
+        // 빈 줄은 추가만 하고 안 채운 것이니 조용히 버린다.
+        let filled = customReminders.filter {
+            !$0.timeText.trimmingCharacters(in: .whitespaces).isEmpty
+                || !$0.title.trimmingCharacters(in: .whitespaces).isEmpty
+        }
+        for item in filled where HM(text: item.timeText) == nil {
+            problem = "내 알림의 시각 형식이 올바르지 않습니다 — 13:40 처럼 입력하세요"
+            return
+        }
+        for item in filled where item.title.trimmingCharacters(in: .whitespaces).isEmpty {
+            problem = "내 알림에 내용을 적어주세요 (\(item.timeText))"
+            return
+        }
+        Settings.customReminders = filled.map { item in
+            CustomReminder(
+                id: item.id,
+                time: HM(text: item.timeText)!,
+                title: item.title.trimmingCharacters(in: .whitespaces),
+                isDaily: item.isDaily,
+                day: item.isDaily ? nil : item.day
+            )
+        }
+        customReminders = filled
 
         if launchAtLogin != LoginItem.isEnabled, !LoginItem.set(launchAtLogin) {
             problem = "로그인 항목 등록에 실패했습니다. 앱을 /Applications 로 옮긴 뒤 다시 시도하세요."
@@ -147,10 +233,50 @@ struct SettingsView: View {
                     field("입실 알림", $model.checkInReminders, prompt: "08:47, 08:56")
                     time("강의실 알림", $model.classroomReminder)
                     field("퇴실 알림", $model.checkOutReminders, prompt: "17:57, 18:05")
-                    field("카메라 확인 간격(분)", $model.cameraInterval, prompt: "40", width: 90)
+                    Toggle("알림에 소리 사용", isOn: $model.notificationSound)
+                    Text("여러 개는 쉼표로 구분합니다. 소리를 끄면 배너만 뜹니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("매시간 사진") {
+                    field("마감 (정각 기준 분)", $model.photoDeadlineMinute, prompt: "20", width: 90)
+                    field("알림 (정각 기준 분)", $model.photoReminderMinutes, prompt: "2, 12", width: 90)
                     time("점심 시작", $model.lunchStart)
                     time("점심 종료", $model.lunchEnd)
-                    Text("여러 개는 쉼표로 구분합니다. 카메라 간격을 0으로 두면 알림을 끕니다.")
+                    Text("매시 정각부터 마감까지 사진을 찍습니다. 점심 시간대는 건너뜁니다. 마감을 0으로 두면 끕니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("내 알림") {
+                    if model.customReminders.isEmpty {
+                        Text("등록된 알림이 없습니다. 병원·외출 같은 개인 일정을 넣어보세요.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach($model.customReminders) { $item in
+                        HStack(spacing: 8) {
+                            TextField("", text: $item.timeText, prompt: Text("13:40"))
+                                .labelsHidden()
+                                .multilineTextAlignment(.center)
+                                .frame(width: 64)
+                            TextField("", text: $item.title, prompt: Text("병원"))
+                                .labelsHidden()
+                            Toggle("매 평일", isOn: $item.isDaily)
+                                .toggleStyle(.checkbox)
+                                .fixedSize()
+                            Button {
+                                model.removeReminder(item.id)
+                            } label: {
+                                Image(systemName: "minus.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .help("삭제")
+                        }
+                    }
+                    Button("알림 추가") { model.addReminder() }
+                    Text("`매 평일`을 끄면 오늘 하루만 울리고 다음 날 목록에서 사라집니다.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -181,7 +307,8 @@ struct SettingsView: View {
             }
             .padding(12)
         }
-        .frame(width: 480, height: 700)
+        // 항목이 많아 화면 높이를 넘긴다. 창을 늘릴 수 있어야 스크롤 없이 볼 수 있다.
+        .frame(minWidth: 520, idealWidth: 520, minHeight: 420, idealHeight: 680)
     }
 
     private func time(_ label: String, _ binding: Binding<String>) -> some View {
@@ -221,8 +348,9 @@ final class SettingsWindowController {
         let hosting = NSHostingController(rootView: SettingsView(model: model))
         let window = NSWindow(contentViewController: hosting)
         window.title = "LikeLionBar 설정"
-        window.styleMask = [.titled, .closable]
+        window.styleMask = [.titled, .closable, .resizable]
         window.isReleasedWhenClosed = false
+        window.setContentSize(NSSize(width: 520, height: 680))
         window.center()
 
         self.window = window

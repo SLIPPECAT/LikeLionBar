@@ -19,7 +19,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     private var isAuthorized = false
     private var lastTick: Date?
     private var lastRealTick: Date?
-    private var cameraSnoozedUntil: Date?
 
     /// LIKELIONBAR_TRACE=1 이면 매 틱의 검사 구간을 남긴다. 알림이 왜 안 떴는지 볼 때 쓴다.
     private let trace = ProcessInfo.processInfo.environment["LIKELIONBAR_TRACE"] != nil
@@ -35,12 +34,12 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     private enum Category {
         static let step = "STEP"
         static let camera = "CAMERA"
+        static let plain = "PLAIN"
     }
 
     private enum Action {
         static let done = "MARK_DONE"
         static let openBoard = "OPEN_BOARD"
-        static let snooze = "SNOOZE_CAMERA"
     }
 
     init(
@@ -83,10 +82,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         let open = UNNotificationAction(
             identifier: Action.openBoard, title: "강의보드 열기", options: [.foreground]
         )
-        let snooze = UNNotificationAction(
-            identifier: Action.snooze, title: "30분 뒤에", options: []
-        )
-
         center.setNotificationCategories([
             UNNotificationCategory(
                 identifier: Category.step,
@@ -94,9 +89,17 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
                 intentIdentifiers: [],
                 options: []
             ),
+            // 사진은 강의보드와 무관하고, 마감이 :20이라 미루기도 의미가 없다.
             UNNotificationCategory(
                 identifier: Category.camera,
-                actions: [done, snooze],
+                actions: [done],
+                intentIdentifiers: [],
+                options: []
+            ),
+            // 커스텀 알림은 알려주는 게 전부다.
+            UNNotificationCategory(
+                identifier: Category.plain,
+                actions: [],
                 intentIdentifiers: [],
                 options: []
             ),
@@ -136,32 +139,40 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         }
 
         for reminder in due {
-            if case .camera = reminder, let until = cameraSnoozedUntil, now < until { continue }
             deliver(reminder)
         }
     }
 
     private func lastPerStep(_ reminders: [Reminder]) -> [Reminder] {
         var seen: [Step: Reminder] = [:]
-        for reminder in reminders { seen[reminder.step] = reminder }
-        return Step.allCases.compactMap { seen[$0] }
+        // 커스텀 알림은 각자 다른 일정이라 하나로 합치면 안 된다. 전부 남긴다.
+        var customs: [Reminder] = []
+        for reminder in reminders {
+            if let step = reminder.step { seen[step] = reminder } else { customs.append(reminder) }
+        }
+        return Step.allCases.compactMap { seen[$0] } + customs
     }
 
     private func deliver(_ reminder: Reminder) {
+        let step = reminder.step
+
         let content = UNMutableNotificationContent()
         content.title = reminder.title
-        content.body = reminder.body
-        content.categoryIdentifier = reminder.step == .camera ? Category.camera : Category.step
-        content.userInfo = ["step": reminder.step.rawValue]
-        if reminder.isNoisy {
+        content.body = reminder.body(deadlineMinute: engine.schedule.photoDeadlineMinute)
+        content.categoryIdentifier = category(for: step)
+        content.userInfo = ["step": step?.rawValue ?? ""]
+        // 기본은 팝업만. 소리는 설정에서 켠 사람만 받는다.
+        if Settings.notificationSound {
             content.sound = .default
         }
 
         // 같은 단계의 이전 알림은 밀어내고 하나만 남긴다.
-        content.threadIdentifier = reminder.step.rawValue
+        // 커스텀은 서로 다른 일정이므로 묶지 않는다.
+        let thread = step?.rawValue ?? "custom-\(reminder.title)"
+        content.threadIdentifier = thread
 
         let request = UNNotificationRequest(
-            identifier: "\(reminder.step.rawValue)-\(Date().timeIntervalSince1970)",
+            identifier: "\(thread)-\(Date().timeIntervalSince1970)",
             content: content,
             trigger: nil  // 즉시
         )
@@ -170,6 +181,15 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             if let error {
                 Log.write("알림 전달 실패 — \(error.localizedDescription)")
             }
+        }
+    }
+
+    /// 커스텀 알림은 완료 표시할 것도, 열 강의보드도 없다. 버튼 없이 띄운다.
+    private func category(for step: Step?) -> String {
+        switch step {
+        case .camera: return Category.camera
+        case .none:   return Category.plain
+        default:      return Category.step
         }
     }
 
@@ -197,9 +217,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         case Action.done:
             if let step { DispatchQueue.main.async { self.onComplete(step) } }
         case Action.openBoard, UNNotificationDefaultActionIdentifier:
+            // 사진 알림은 강의보드와 무관하니 배너를 눌러도 브라우저를 열지 않는다.
+            guard step != .camera else { break }
             DispatchQueue.main.async { self.onOpenBoard() }
-        case Action.snooze:
-            cameraSnoozedUntil = nowProvider().addingTimeInterval(30 * 60)
         default:
             break
         }

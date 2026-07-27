@@ -42,15 +42,20 @@ func monday(_ h: Int, _ m: Int, _ s: Int = 0) -> Date { makeDate(2026, 7, 27, h,
 /// 2026-08-01 토요일
 func saturday(_ h: Int, _ m: Int) -> Date { makeDate(2026, 8, 1, h, m) }
 
-func dayState(_ done: [Step] = [], dayOff: Bool = false, on day: Date) -> DayState {
+func dayState(
+    _ done: [Step] = [], photos: Set<Int> = [], dayOff: Bool = false, on day: Date
+) -> DayState {
     var s = DayState.empty(for: day, calendar: calendar)
     s.isDayOff = dayOff
+    s.donePhotoHours = photos
     for step in done { s.complete(step, at: day) }
     return s
 }
 
-func show(_ now: Date, _ done: [Step] = [], dayOff: Bool = false) -> BarPresentation {
-    engine.presentation(now: now, state: dayState(done, dayOff: dayOff, on: now))
+func show(
+    _ now: Date, _ done: [Step] = [], photos: Set<Int> = [], dayOff: Bool = false
+) -> BarPresentation {
+    engine.presentation(now: now, state: dayState(done, photos: photos, dayOff: dayOff, on: now))
 }
 
 // MARK: - 픽스처 전제
@@ -215,30 +220,45 @@ do {
     expect(show(monday(18, 5), [.checkIn, .classroom, .checkOut]).tone, .done, "완료는 초록")
 }
 
-// MARK: - 카메라 알림 시각
+// MARK: - 사진 대상 시간대
 
 do {
-    let times = Schedule.default.cameraReminderTimes
-    expect(times.first, HM(9, 40), "첫 카메라 알림은 수업 시작 40분 뒤")
-    expect(times.last, HM(17, 40), "마지막은 수업 종료 전")
-    expect(times.contains(HM(12, 20)), false, "점심시간에는 알리지 않는다")
-    expect(times.contains(HM(13, 40)), true, "점심 후 간격을 다시 센다")
-    expect(times.allSatisfy { $0 < HM(18, 0) }, true, "수업 종료 후에는 없다")
+    let hours = Schedule.default.photoHours
+    expect(hours, [9, 10, 11, 13, 14, 15, 16, 17], "수업 시간에서 점심시간대만 뺀 여덟 번")
+    expect(hours.contains(12), false, "12시대는 점심이라 건너뛴다")
+    expect(hours.contains(18), false, "수업이 끝난 뒤는 없다")
+    expect(hours.contains(8), false, "수업 시작 전은 없다")
 
     var off = Schedule.default
-    off.cameraIntervalMinutes = 0
-    expect(off.cameraReminderTimes.isEmpty, true, "간격 0이면 카메라 알림을 끈다")
+    off.photoDeadlineMinute = 0
+    expect(off.photoHours.isEmpty, true, "마감을 0으로 두면 사진을 끈다")
+
+    // 점심시간을 바꾸면 건너뛰는 시간대도 따라가야 한다
+    var lateLunch = Schedule.default
+    lateLunch.lunchStart = HM(13, 0)
+    lateLunch.lunchEnd = HM(14, 0)
+    expect(lateLunch.photoHours.contains(12), true, "점심을 옮기면 12시대가 살아난다")
+    expect(lateLunch.photoHours.contains(13), false, "옮긴 점심시간대는 빠진다")
 }
 
 // MARK: - ReminderEngine
 
 let reminders = ReminderEngine(schedule: .default, calendar: calendar)
 
-func due(_ h: Int, _ m: Int, _ done: [Step] = [], dayOff: Bool = false, on day: (Int, Int, Int)? = nil) -> [Reminder] {
+func due(
+    _ h: Int, _ m: Int, _ done: [Step] = [], photos: Set<Int> = [],
+    dayOff: Bool = false, on day: (Int, Int, Int)? = nil
+) -> [Reminder] {
     let to = day.map { makeDate($0.0, $0.1, $0.2, h, m, 30) } ?? monday(h, m, 30)
     let from = to.addingTimeInterval(-60)
-    return reminders.due(from: from, to: to, state: dayState(done, dayOff: dayOff, on: to))
+    return reminders.due(
+        from: from, to: to, state: dayState(done, photos: photos, dayOff: dayOff, on: to)
+    )
 }
+
+/// 사진 알림이 매시간 도는지 보려면 그 시간대만 안 찍은 상태를 만들어야 한다.
+let allPhotoHours = Set(Schedule.default.photoHours)
+func photosExcept(_ hour: Int) -> Set<Int> { allPhotoHours.subtracting([hour]) }
 
 expect(due(8, 47), [.checkIn(attempt: 1, isFinal: false)], "08:47에 첫 입실 알림")
 expect(due(9, 8), [.checkIn(attempt: 4, isFinal: true)], "09:08은 최종 경고")
@@ -247,11 +267,62 @@ expect(due(8, 52, [.checkIn]), [.classroom], "입실 후 강의실 알림")
 expect(due(8, 52).isEmpty, true, "입실 전에는 강의실을 조르지 않는다")
 expect(due(17, 57, [.checkIn, .classroom]), [.checkOut(attempt: 1)], "17:57에 퇴실 알림")
 expect(due(18, 15, [.checkIn, .classroom, .checkOut]).isEmpty, true, "퇴실했으면 알림이 없다")
-expect(due(9, 40, [.checkIn, .classroom]), [.camera], "09:40에 카메라 알림")
 expect(due(8, 47, dayOff: true).isEmpty, true, "쉬는 날에는 알림이 없다")
 // 2026-08-01 토요일
 expect(due(8, 47, on: (2026, 8, 1)).isEmpty, true, "주말에는 알림이 없다")
 expect(due(8, 48).isEmpty, true, "알림 시각이 아니면 조용하다")
+
+// MARK: - 매시간 사진 알림
+
+do {
+    let done = [Step.checkIn, .classroom]
+    // 10시대만 안 찍은 상태
+    expect(due(10, 2, done, photos: photosExcept(10)), [.photo(hour: 10, isFinal: false)],
+           "매시 :02에 첫 사진 알림")
+    expect(due(10, 12, done, photos: photosExcept(10)), [.photo(hour: 10, isFinal: true)],
+           ":12는 마감 전 최종 경고")
+    expect(due(10, 2, done, photos: allPhotoHours).isEmpty, true,
+           "이미 찍었으면 알리지 않는다")
+    expect(due(10, 20, done, photos: photosExcept(10)).isEmpty, true,
+           "마감 시각 자체에는 알리지 않는다")
+    expect(due(12, 2, done, photos: photosExcept(12)).isEmpty, true,
+           "점심시간대에는 사진을 조르지 않는다")
+    expect(due(18, 2, done, photos: []).isEmpty, true,
+           "수업이 끝난 뒤에는 조르지 않는다")
+    expect(due(15, 2, done, photos: photosExcept(15)), [.photo(hour: 15, isFinal: false)],
+           "오후에도 시간마다 되풀이된다")
+
+    // 시간대별로 따로 세므로 앞 시간을 찍었다고 다음 시간이 면제되지 않는다
+    expect(due(11, 2, done, photos: [9, 10]), [.photo(hour: 11, isFinal: false)],
+           "앞 시간을 찍어도 이번 시간은 다시 조른다")
+}
+
+// MARK: - 메뉴바 사진 카운트다운
+
+do {
+    let done = [Step.checkIn, .classroom]
+    expectNil(show(monday(10, 5), done, photos: photosExcept(10)).text,
+              "첫 알림 직후에는 메뉴바가 조용하다")
+
+    let p = show(monday(10, 14), done, photos: photosExcept(10))
+    expect(p.text, "사진 06:00", ":12를 지나면 마감까지 카운트다운")
+    expect(p.tone, .alert, "사진 독촉은 빨강")
+    expect(p.face, .angry, "사진 독촉은 화난 얼굴")
+    expect(p.blinking, false, "2분 넘게 남으면 깜빡이지 않는다")
+
+    expect(show(monday(10, 19), done, photos: photosExcept(10)).blinking, true,
+           "2분 미만이면 깜빡인다")
+    expectNil(show(monday(10, 21), done, photos: photosExcept(10)).text,
+              "마감이 지나면 이번 시간은 포기하고 조용해진다")
+    expectNil(show(monday(10, 14), done, photos: allPhotoHours).text,
+              "찍었으면 즉시 조용해진다")
+    expectNil(show(monday(12, 14), done, photos: photosExcept(12)).text,
+              "점심시간대에는 카운트다운이 없다")
+
+    // 입실이 더 급하다. 사진 때문에 지각 경고가 가려지면 안 된다
+    expect(show(monday(9, 14), photos: photosExcept(9)).text, "지각",
+           "미입실이 사진보다 우선한다")
+}
 
 do {
     // 경계: 정확히 그 초에 걸쳐야 하고 중복으로 두 번 울리면 안 된다
@@ -308,6 +379,63 @@ do {
 
     let raw = (try? String(contentsOf: tmp.appendingPathComponent("state.json"), encoding: .utf8)) ?? ""
     expect(raw.contains("isDayOff"), true, "state.json이 사람이 읽을 수 있는 형태다")
+}
+
+// MARK: - 커스텀 알림
+
+do {
+    let monDay = calendar.dateComponents([.year, .month, .day], from: monday(0, 0))
+    let hospital = CustomReminder(time: HM(13, 40), title: "병원", isDaily: false, day: monDay)
+    let stretch = CustomReminder(time: HM(15, 10), title: "스트레칭", isDaily: true)
+
+    let engine2 = ReminderEngine(
+        schedule: .default, custom: [hospital, stretch], calendar: calendar
+    )
+    func customDue(_ h: Int, _ m: Int, dayOff: Bool = false, on day: (Int, Int, Int)? = nil) -> [Reminder] {
+        let to = day.map { makeDate($0.0, $0.1, $0.2, h, m, 30) } ?? monday(h, m, 30)
+        let state = dayState([.checkIn, .classroom], photos: allPhotoHours, dayOff: dayOff, on: to)
+        return engine2.due(from: to.addingTimeInterval(-60), to: to, state: state)
+    }
+
+    expect(customDue(13, 40), [.custom(title: "병원")], "등록한 시각에 울린다")
+    expect(customDue(15, 10), [.custom(title: "스트레칭")], "매 평일 알림도 울린다")
+    expect(customDue(13, 41).isEmpty, true, "시각이 아니면 조용하다")
+
+    // 쉬는 날: 개인 일정은 살고 반복 일정은 쉰다
+    expect(customDue(13, 40, dayOff: true), [.custom(title: "병원")],
+           "쉬는 날이어도 그날 잡은 개인 일정은 울린다")
+    expect(customDue(15, 10, dayOff: true).isEmpty, true,
+           "쉬는 날에는 매 평일 반복을 쉰다")
+
+    // 주말: 일회성은 그날이 아니므로 안 울리고, 반복도 평일이 아니라 쉰다
+    expect(customDue(13, 40, on: (2026, 8, 1)).isEmpty, true, "다른 날짜에는 안 울린다")
+    expect(customDue(15, 10, on: (2026, 8, 1)).isEmpty, true, "주말에는 반복도 쉰다")
+
+    // 꺼두면 울리지 않는다
+    var off = hospital
+    off.isEnabled = false
+    let engine3 = ReminderEngine(schedule: .default, custom: [off], calendar: calendar)
+    let at = monday(13, 40, 30)
+    expect(engine3.due(from: at.addingTimeInterval(-60), to: at,
+                       state: dayState(on: at)).isEmpty, true, "꺼둔 알림은 울리지 않는다")
+
+    // 만료 판정
+    expect(hospital.isExpired(on: monday(23, 0), calendar: calendar), false, "당일에는 안 지났다")
+    expect(hospital.isExpired(on: makeDate(2026, 7, 28, 0, 1), calendar: calendar), true,
+           "다음날이 되면 지난 것으로 본다")
+    expect(stretch.isExpired(on: makeDate(2027, 1, 1, 0, 0), calendar: calendar), false,
+           "반복 알림은 만료되지 않는다")
+}
+
+do {
+    // 출결 알림과 섞여도 서로 지워지지 않아야 한다
+    let lunch = CustomReminder(time: HM(8, 47), title: "약 먹기", isDaily: true)
+    let engine4 = ReminderEngine(schedule: .default, custom: [lunch], calendar: calendar)
+    let at = monday(8, 47, 30)
+    let result = engine4.due(from: at.addingTimeInterval(-60), to: at, state: dayState(on: at))
+    expect(result.count, 2, "같은 시각의 출결 알림과 내 알림이 둘 다 나온다")
+    expect(result.contains(.custom(title: "약 먹기")), true, "내 알림이 포함된다")
+    expect(result.contains(.checkIn(attempt: 1, isFinal: false)), true, "입실 알림도 포함된다")
 }
 
 // MARK: - HM 문자열 (설정 창 입력)

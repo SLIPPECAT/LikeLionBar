@@ -51,7 +51,36 @@ public struct ScheduleEngine: Sendable {
             return BarPresentation(face: .angry, text: "강의실", tone: .warning)
         }
 
+        // 4. 이번 시간 사진. 매시 마감이 따로 있어 시간마다 되풀이된다.
+        //    첫 알림 때부터 띄우면 하루 종일 시끄러우므로 마지막 알림 이후에만 보여준다.
+        if let photo = photoPresentation(now: now, state: state) {
+            return photo
+        }
+
         return quiet(state)
+    }
+
+    /// 이번 시간 사진이 남았을 때의 카운트다운. 아직 조를 때가 아니면 nil.
+    private func photoPresentation(now: Date, state: DayState) -> BarPresentation? {
+        let hour = calendar.component(.hour, from: now)
+        guard schedule.photoHours.contains(hour), !state.isPhotoDone(hour: hour) else {
+            return nil
+        }
+        guard let lastReminder = schedule.photoReminderMinutes.max() else { return nil }
+
+        let showFrom = time(HM(hour, lastReminder), on: now)
+        let deadline = time(HM(hour, schedule.photoDeadlineMinute), on: now)
+        guard now >= showFrom, now < deadline else { return nil }
+
+        let remaining = deadline.timeIntervalSince(now)
+        return BarPresentation(
+            face: .angry,
+            // 입실 카운트다운과 구분되어야 무엇이 급한지 헷갈리지 않는다.
+            // 이모지는 컬러라 상태색이 안 먹고 메뉴바 크기에서 뭉개진다.
+            text: "사진 " + Self.countdown(remaining),
+            tone: .alert,
+            blinking: remaining <= schedule.photoUrgentThreshold
+        )
     }
 
     /// 조를 것이 없는 상태. 오늘 뭔가 했으면 웃고, 아니면 무표정.

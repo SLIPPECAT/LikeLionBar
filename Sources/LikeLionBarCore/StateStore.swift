@@ -67,6 +67,21 @@ public final class StateStore {
         save()
     }
 
+    /// 사진은 하루 한 번이 아니라 시간마다라 별도로 다룬다.
+    public func togglePhoto(hour: Int, at date: Date) {
+        state.togglePhoto(hour: hour)
+        let action = state.isPhotoDone(hour: hour) ? "completed" : "uncompleted"
+        append(step: "photo-\(hour)", action: action, at: date)
+        save()
+    }
+
+    public func completePhoto(hour: Int, at date: Date) {
+        guard !state.isPhotoDone(hour: hour) else { return }
+        state.completePhoto(hour: hour)
+        append(step: "photo-\(hour)", action: "completed", at: date)
+        save()
+    }
+
     public func setDayOff(_ isDayOff: Bool, at date: Date) {
         guard state.isDayOff != isDayOff else { return }
         state.isDayOff = isDayOff

@@ -25,6 +25,7 @@ enum Log {
         let line = "[\(formatter.string(from: Date()))] \(message)\n"
         queue.async {
             guard let data = line.data(using: .utf8) else { return }
+            rotateIfNeeded()
             if let handle = try? FileHandle(forWritingTo: url) {
                 defer { try? handle.close() }
                 _ = try? handle.seekToEnd()
@@ -33,5 +34,19 @@ enum Log {
                 try? data.write(to: url, options: .atomic)
             }
         }
+    }
+
+    /// 이 크기를 넘으면 한 번 넘기고 새로 쓴다. 매일 도는 앱이라 놔두면 계속 쌓인다.
+    private static let maxBytes = 512 * 1024
+
+    /// 직전 파일 하나만 남긴다. 문제를 볼 땐 보통 최근 것이면 충분하다.
+    private static func rotateIfNeeded() {
+        let fm = FileManager.default
+        guard let size = try? fm.attributesOfItem(atPath: url.path)[.size] as? Int,
+              size > maxBytes else { return }
+
+        let previous = url.deletingLastPathComponent().appendingPathComponent("debug.log.1")
+        try? fm.removeItem(at: previous)
+        try? fm.moveItem(at: url, to: previous)
     }
 }

@@ -14,6 +14,11 @@ enum Settings {
     private enum Key {
         static let courseSlug = "courseSlug"
         static let chromeProfile = "chromeProfile"
+        static let notificationSound = "notificationSound"
+        static let customReminders = "customReminders"
+
+        static let photoDeadlineMinute = "photoDeadlineMinute"
+        static let photoReminderMinutes = "photoReminderMinutes"
 
         static let checkInWindowStart = "checkInWindowStart"
         static let lateDeadline = "lateDeadline"
@@ -25,16 +30,46 @@ enum Settings {
         static let checkInReminders = "checkInReminders"
         static let classroomReminder = "classroomReminder"
         static let checkOutReminders = "checkOutReminders"
-        static let cameraIntervalMinutes = "cameraIntervalMinutes"
         static let lunchStart = "lunchStart"
         static let lunchEnd = "lunchEnd"
 
         static let allSchedule = [
             checkInWindowStart, lateDeadline, classStart, classEnd,
             classroomAvailableFrom, checkOutRemindFrom, checkInReminders,
-            classroomReminder, checkOutReminders, cameraIntervalMinutes,
+            classroomReminder, checkOutReminders,
+            photoDeadlineMinute, photoReminderMinutes,
             lunchStart, lunchEnd,
         ]
+    }
+
+    /// 기본은 팝업만. 소리는 켠 사람만 받는다.
+    static var notificationSound: Bool {
+        get { defaults.bool(forKey: Key.notificationSound) }
+        set { defaults.set(newValue, forKey: Key.notificationSound) }
+    }
+
+    /// 사용자가 직접 등록한 알림들.
+    static var customReminders: [CustomReminder] {
+        get {
+            guard let data = defaults.data(forKey: Key.customReminders) else { return [] }
+            let decoder = JSONDecoder()
+            return (try? decoder.decode([CustomReminder].self, from: data)) ?? []
+        }
+        set {
+            let encoder = JSONEncoder()
+            guard let data = try? encoder.encode(newValue) else { return }
+            defaults.set(data, forKey: Key.customReminders)
+        }
+    }
+
+    /// 날짜가 지난 일회성 알림을 치운다. 놔두면 설정 목록이 계속 길어진다.
+    @discardableResult
+    static func pruneExpiredReminders(now: Date = Date(), calendar: Calendar = .current) -> Int {
+        let all = customReminders
+        let kept = all.filter { !$0.isExpired(on: now, calendar: calendar) }
+        guard kept.count != all.count else { return 0 }
+        customReminders = kept
+        return all.count - kept.count
     }
 
     static var courseSlug: String {
@@ -62,8 +97,9 @@ enum Settings {
                 checkInReminders: times(Key.checkInReminders, d.checkInReminders),
                 classroomReminder: time(Key.classroomReminder, d.classroomReminder),
                 checkOutReminders: times(Key.checkOutReminders, d.checkOutReminders),
-                cameraIntervalMinutes: defaults.object(forKey: Key.cameraIntervalMinutes) as? Int
-                    ?? d.cameraIntervalMinutes,
+                photoDeadlineMinute: defaults.object(forKey: Key.photoDeadlineMinute) as? Int
+                    ?? d.photoDeadlineMinute,
+                photoReminderMinutes: minutes(Key.photoReminderMinutes, d.photoReminderMinutes),
                 lunchStart: time(Key.lunchStart, d.lunchStart),
                 lunchEnd: time(Key.lunchEnd, d.lunchEnd)
             )
@@ -78,7 +114,11 @@ enum Settings {
             defaults.set(HM.text(from: newValue.checkInReminders), forKey: Key.checkInReminders)
             defaults.set(newValue.classroomReminder.text, forKey: Key.classroomReminder)
             defaults.set(HM.text(from: newValue.checkOutReminders), forKey: Key.checkOutReminders)
-            defaults.set(newValue.cameraIntervalMinutes, forKey: Key.cameraIntervalMinutes)
+            defaults.set(newValue.photoDeadlineMinute, forKey: Key.photoDeadlineMinute)
+            defaults.set(
+                newValue.photoReminderMinutes.map(String.init).joined(separator: ", "),
+                forKey: Key.photoReminderMinutes
+            )
             defaults.set(newValue.lunchStart.text, forKey: Key.lunchStart)
             defaults.set(newValue.lunchEnd.text, forKey: Key.lunchEnd)
         }
@@ -102,6 +142,15 @@ enum Settings {
         guard let raw = defaults.string(forKey: key) else { return fallback }
         let parsed = HM.list(from: raw)
         // 전부 지워버리면 알림이 통째로 사라진다. 그건 사고지 의도가 아니다.
+        return parsed.isEmpty ? fallback : parsed
+    }
+
+    /// `"2, 12"` 형태의 정각 기준 분 목록.
+    private static func minutes(_ key: String, _ fallback: [Int]) -> [Int] {
+        guard let raw = defaults.string(forKey: key) else { return fallback }
+        let parsed = raw.split(separator: ",")
+            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+            .filter { (0..<60).contains($0) }
         return parsed.isEmpty ? fallback : parsed
     }
 }
