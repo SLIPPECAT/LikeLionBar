@@ -14,18 +14,37 @@ CONFIG="${1:-debug}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-echo "▸ swift build (-c $CONFIG)"
-swift build -c "$CONFIG"
-
-BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
-BIN="$BIN_DIR/$APP_NAME"
-[ -f "$BIN" ] || { echo "✗ 실행 파일 없음: $BIN"; exit 1; }
-
 APP="$ROOT/build/$APP_NAME.app"
-echo "▸ 번들 조립 → $APP"
+DEST="$APP/Contents/MacOS/$APP_NAME"
+
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/$APP_NAME"
+
+# 빌드 로그는 stderr로 흘리고 stdout에는 실행 파일 경로만 남긴다.
+build_for() {
+    local triple="$1"
+    swift build -c "$CONFIG" --triple "$triple" >&2
+    echo "$(swift build -c "$CONFIG" --triple "$triple" --show-bin-path)/$APP_NAME"
+}
+
+if [ "$CONFIG" = "release" ]; then
+    # 배포본은 Intel 맥에서도 열려야 한다. Rosetta는 x86을 ARM으로 번역하는 것이라
+    # 반대 방향은 못 도와주므로, arm64 전용으로 내보내면 Intel 맥에서는 실행이 안 된다.
+    # --arch 다중 지정은 Xcode의 xcbuild를 요구하므로, 따로 빌드해 lipo로 합친다.
+    echo "▸ swift build (release, arm64)"
+    ARM_BIN="$(build_for "arm64-apple-macosx$MIN_MACOS")"
+    echo "▸ swift build (release, x86_64)"
+    X86_BIN="$(build_for "x86_64-apple-macosx$MIN_MACOS")"
+    echo "▸ lipo로 유니버설 생성"
+    lipo -create "$ARM_BIN" "$X86_BIN" -output "$DEST"
+else
+    echo "▸ swift build (-c $CONFIG)"
+    swift build -c "$CONFIG"
+    cp "$(swift build -c "$CONFIG" --show-bin-path)/$APP_NAME" "$DEST"
+fi
+
+[ -f "$DEST" ] || { echo "✗ 실행 파일 생성 실패"; exit 1; }
+echo "▸ 번들 조립 → $APP"
 
 # 아이콘이 있으면 넣는다. 없으면 Finder와 알림에 빈 사각형이 뜬다.
 ICON_LINE=""
@@ -66,5 +85,5 @@ echo "▸ ad-hoc 서명"
 codesign --force --sign - --timestamp=none "$APP"
 codesign --verify --verbose=2 "$APP" 2>&1 | sed 's/^/  /'
 
-echo "✓ 완료: $APP"
+echo "✓ 완료: $APP  ($(lipo -archs "$APP/Contents/MacOS/$APP_NAME"))"
 echo "  실행: open \"$APP\""
