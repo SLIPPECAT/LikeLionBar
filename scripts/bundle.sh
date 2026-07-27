@@ -6,8 +6,8 @@ set -euo pipefail
 
 APP_NAME="LikeLionBar"
 BUNDLE_ID="com.ryujunyeong.likelionbar"
-VERSION="0.1.0"
-BUILD_NUMBER="1"
+VERSION="0.2.0"
+BUILD_NUMBER="2"
 MIN_MACOS="14.0"
 
 CONFIG="${1:-debug}"
@@ -45,6 +45,12 @@ fi
 
 [ -f "$DEST" ] || { echo "✗ 실행 파일 생성 실패"; exit 1; }
 echo "▸ 번들 조립 → $APP"
+
+# 메뉴바에 띄울 사자 표정들.
+if [ -d "$ROOT/Resources/faces" ]; then
+    cp "$ROOT"/Resources/faces/*.png "$APP/Contents/Resources/" 2>/dev/null
+    echo "▸ 표정 $(ls "$ROOT/Resources/faces"/*.png 2>/dev/null | wc -l | tr -d ' ')개 포함"
+fi
 
 # 아이콘이 있으면 넣는다. 없으면 Finder와 알림에 빈 사각형이 뜬다.
 ICON_LINE=""

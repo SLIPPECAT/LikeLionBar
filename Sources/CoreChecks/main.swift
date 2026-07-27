@@ -193,6 +193,28 @@ expect(ScheduleEngine.countdown(-10), "00:00", "음수는 0으로 눌러준다")
 // 0.5초 남았는데 00:00을 보이면 아직 시간이 있는데 끝난 것처럼 보인다.
 expect(ScheduleEngine.countdown(0.5), "00:01", "올림해서 조기 0을 막는다")
 
+// MARK: - 사자 표정 (무표정 → 화남 → 울음으로 악화)
+
+expect(show(monday(8, 39)).face, .neutral, "조용할 땐 무표정")
+expect(show(saturday(8, 47)).face, .neutral, "주말도 무표정")
+expect(show(monday(8, 47), dayOff: true).face, .neutral, "쉬는 날도 무표정")
+expect(show(monday(8, 47)).face, .neutral, "여유 있는 카운트다운은 아직 무표정")
+expect(show(monday(9, 6)).face, .angry, "5분 미만이면 화난다")
+expect(show(monday(9, 5)).face, .angry, "정확히 5분에서 화난다")
+expect(show(monday(9, 11)).face, .crying, "지각하면 운다")
+expect(show(monday(9, 30), [.checkIn]).face, .angry, "강의실 재촉은 화난 얼굴")
+expect(show(monday(17, 58), [.checkIn, .classroom]).face, .angry, "퇴실 재촉도 화난 얼굴")
+expect(show(monday(8, 45), [.checkIn]).face, .happy, "할 일을 마치면 웃는다")
+expect(show(monday(18, 5), [.checkIn, .classroom, .checkOut]).face, .happy, "퇴실까지 끝내면 웃는다")
+
+do {
+    // 표정이 바뀌는 순간 색도 같이 바뀌어야 신호가 어긋나지 않는다
+    expect(show(monday(9, 6)).tone, .alert, "화난 입실 독촉은 빨강")
+    expect(show(monday(9, 11)).tone, .alert, "지각도 빨강")
+    expect(show(monday(9, 30), [.checkIn]).tone, .warning, "강의실은 주황")
+    expect(show(monday(18, 5), [.checkIn, .classroom, .checkOut]).tone, .done, "완료는 초록")
+}
+
 // MARK: - 카메라 알림 시각
 
 do {

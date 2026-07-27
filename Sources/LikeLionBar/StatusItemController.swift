@@ -75,16 +75,7 @@ final class StatusItemController {
 
         let tint = color(for: p.tone)
 
-        // 메뉴바는 템플릿 이미지를 시스템 색으로 강제 렌더링하므로 contentTintColor가 무시된다.
-        // 색을 넣으려면 심볼 자체에 구워야 한다. quiet일 때만 템플릿으로 두어 명암에 맡긴다.
-        var config = NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
-        if let tint {
-            config = config.applying(NSImage.SymbolConfiguration(hierarchicalColor: tint))
-        }
-        let image = NSImage(systemSymbolName: p.symbol, accessibilityDescription: p.text)?
-            .withSymbolConfiguration(config)
-        image?.isTemplate = (tint == nil)
-        button.image = image
+        button.image = faceImage(p.face, tone: p.tone, tint: tint)
         button.contentTintColor = nil
 
         if let text = p.text {
@@ -112,6 +103,44 @@ final class StatusItemController {
         case .warning: return .systemOrange
         case .alert:   return .systemRed
         }
+    }
+
+    // MARK: - 사자 얼굴
+
+    /// 매 틱마다 새로 그리면 낭비다. 얼굴×색조 조합은 몇 개 안 되므로 그대로 캐싱한다.
+    private var faceCache: [String: NSImage] = [:]
+
+    private static let faceSide: CGFloat = 18
+
+    private func faceImage(_ face: Face, tone: BarPresentation.Tone, tint: NSColor?) -> NSImage? {
+        let key = "\(face.rawValue)-\(tone)"
+        if let cached = faceCache[key] { return cached }
+
+        guard let url = Bundle.main.url(forResource: "lion_\(face.rawValue)", withExtension: "png"),
+              let original = NSImage(contentsOf: url) else {
+            Log.write("얼굴 이미지 없음 — lion_\(face.rawValue).png")
+            return nil
+        }
+
+        let side = Self.faceSide
+        let box = NSRect(x: 0, y: 0, width: side, height: side)
+
+        let result = NSImage(size: NSSize(width: side, height: side))
+        result.lockFocus()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        original.draw(in: box)
+        if let tint {
+            // 선화의 불투명한 부분만 상태색으로 덮는다.
+            tint.set()
+            box.fill(using: .sourceAtop)
+        }
+        result.unlockFocus()
+
+        // 색을 입히지 않은 경우에만 템플릿으로 두어 메뉴바 명암에 맡긴다.
+        result.isTemplate = (tint == nil)
+
+        faceCache[key] = result
+        return result
     }
 
     // MARK: - 깜빡임

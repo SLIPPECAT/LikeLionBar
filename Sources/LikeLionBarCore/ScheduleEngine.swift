@@ -26,49 +26,39 @@ public struct ScheduleEngine: Sendable {
         if !state.isDone(.checkIn), now >= windowStart, now < classEnd {
             let remaining = deadline.timeIntervalSince(now)
             if remaining > 0 {
+                // 여유가 있을 땐 무표정, 마감이 다가오면 화난 얼굴로 넘어간다.
+                let urgent = remaining <= schedule.urgentThreshold
                 return BarPresentation(
-                    symbol: "exclamationmark.triangle.fill",
+                    face: urgent ? .angry : .neutral,
                     text: Self.countdown(remaining),
                     tone: .alert,
-                    blinking: remaining <= schedule.urgentThreshold
+                    blinking: urgent
                 )
             }
             // 마감을 넘겼어도 출석 자체는 받아야 하므로 계속 보여준다.
             // 다만 이제 서두를 이유가 없으니 깜빡이지는 않는다.
-            return BarPresentation(
-                symbol: "exclamationmark.triangle.fill",
-                text: "지각",
-                tone: .alert
-            )
+            return BarPresentation(face: .crying, text: "지각", tone: .alert)
         }
 
         // 2. 퇴실. 놓치면 그날 출석이 통째로 날아가므로 하루 끝까지 표시한다.
         if !state.isDone(.checkOut), now >= checkOutFrom {
-            return BarPresentation(
-                symbol: "figure.walk.departure",
-                text: "퇴실",
-                tone: .warning
-            )
+            return BarPresentation(face: .angry, text: "퇴실", tone: .warning)
         }
 
         // 3. 강의실 입장. 버튼이 실제로 활성화되는 시각부터 조른다.
         if state.isDone(.checkIn), !state.isDone(.classroom),
            now >= time(schedule.classroomAvailableFrom, on: now), now < classEnd {
-            return BarPresentation(
-                symbol: "video.fill",
-                text: "강의실",
-                tone: .warning
-            )
+            return BarPresentation(face: .angry, text: "강의실", tone: .warning)
         }
 
         return quiet(state)
     }
 
-    /// 조를 것이 없는 상태. 오늘 뭔가 했으면 체크, 아니면 기본 아이콘.
+    /// 조를 것이 없는 상태. 오늘 뭔가 했으면 웃고, 아니면 무표정.
     private func quiet(_ state: DayState) -> BarPresentation {
         state.hasAnyProgress
-            ? BarPresentation(symbol: "checkmark.circle.fill", tone: .done)
-            : BarPresentation(symbol: "graduationcap.fill", tone: .quiet)
+            ? BarPresentation(face: .happy, tone: .done)
+            : BarPresentation(face: .neutral, tone: .quiet)
     }
 
     private func isRestDay(now: Date, state: DayState) -> Bool {
