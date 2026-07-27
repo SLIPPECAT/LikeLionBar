@@ -16,6 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         for step in DebugClock.fakeCompletedSteps() {
             store.complete(step, at: nowProvider())
         }
+        for hour in DebugClock.fakePhotoHours() {
+            store.completePhoto(hour: hour, at: nowProvider())
+        }
         self.store = store
 
         let statusController = StatusItemController(
@@ -74,7 +77,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         let profile = Settings.chromeProfile.isEmpty ? "기본" : Settings.chromeProfile
-        Log.write("시작 — slug=\(Settings.courseSlug) profile=\(profile)")
+        Log.write(
+            "시작 — slug=\(Settings.courseSlug) profile=\(profile)"
+                + " 로그인시작=\(LoginItem.isEnabled ? "켜짐" : "꺼짐")"
+                + " 위치=\(Bundle.main.bundleURL.path)"
+        )
 
         // 메뉴바 클릭을 자동화하기 어려워 설정 창 확인용 통로를 둔다.
         if ProcessInfo.processInfo.environment["LIKELIONBAR_OPEN_SETTINGS"] != nil {

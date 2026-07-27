@@ -51,6 +51,15 @@ enum DebugClock {
         return { fakeStart.addingTimeInterval(Date().timeIntervalSince(realStart) * speed) }
     }
 
+    /// `LIKELIONBAR_FAKE_PHOTOS=9,10,11,13` 형태로 찍은 시간대를 미리 채운다.
+    /// 하루 중간 상태를 재현해야 메뉴가 실제처럼 보인다.
+    static func fakePhotoHours() -> Set<Int> {
+        guard let raw = ProcessInfo.processInfo.environment["LIKELIONBAR_FAKE_PHOTOS"] else {
+            return []
+        }
+        return Set(raw.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) })
+    }
+
     /// `LIKELIONBAR_FAKE_DONE=checkIn,classroom` 형태로 완료 단계를 미리 채운다.
     static func fakeCompletedSteps() -> [Step] {
         guard let raw = ProcessInfo.processInfo.environment["LIKELIONBAR_FAKE_DONE"] else {

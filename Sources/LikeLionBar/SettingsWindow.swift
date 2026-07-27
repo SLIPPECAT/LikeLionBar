@@ -276,7 +276,8 @@ struct SettingsView: View {
                         }
                     }
                     Button("알림 추가") { model.addReminder() }
-                    Text("`매 평일`을 끄면 오늘 하루만 울리고 다음 날 목록에서 사라집니다.")
+                    // 백틱을 쓰면 SwiftUI가 마크다운 코드로 해석해 글자 사이가 벌어진다.
+                    Text("매 평일을 끄면 오늘 하루만 울리고 다음 날 목록에서 사라집니다.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
