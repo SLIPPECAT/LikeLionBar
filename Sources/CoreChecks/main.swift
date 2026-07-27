@@ -306,7 +306,7 @@ do {
               "첫 알림 직후에는 메뉴바가 조용하다")
 
     let p = show(monday(10, 14), done, photos: photosExcept(10))
-    expect(p.text, "사진 06:00", ":12를 지나면 마감까지 카운트다운")
+    expect(p.text, "카메라 06:00", ":12를 지나면 마감까지 카운트다운")
     expect(p.tone, .alert, "사진 독촉은 빨강")
     expect(p.face, .angry, "사진 독촉은 화난 얼굴")
     expect(p.blinking, false, "2분 넘게 남으면 깜빡이지 않는다")

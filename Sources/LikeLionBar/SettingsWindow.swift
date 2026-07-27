@@ -142,18 +142,18 @@ final class SettingsModel: ObservableObject {
         }
         guard let deadline = Int(photoDeadlineMinute.trimmingCharacters(in: .whitespaces)),
               (0..<60).contains(deadline) else {
-            problem = "사진 마감은 0~59 사이의 분이어야 합니다 (0이면 끔)"
+            problem = "카메라 마감은 0~59 사이의 분이어야 합니다 (0이면 끔)"
             return
         }
         let photoMinutes = photoReminderMinutes.split(separator: ",")
             .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
             .filter { (0..<60).contains($0) }
         guard !photoMinutes.isEmpty else {
-            problem = "사진 알림을 최소 하나는 남겨두세요 (예: 2, 12)"
+            problem = "카메라 알림을 최소 하나는 남겨두세요 (예: 2, 12)"
             return
         }
         guard photoMinutes.allSatisfy({ $0 < deadline }) else {
-            problem = "사진 알림은 마감(\(deadline)분)보다 앞이어야 합니다"
+            problem = "카메라 알림은 마감(\(deadline)분)보다 앞이어야 합니다"
             return
         }
 
@@ -246,12 +246,12 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("매시간 사진") {
+                Section("매시간 카메라 확인") {
                     field("마감 (정각 기준 분)", $model.photoDeadlineMinute, prompt: "20", width: 90)
                     field("알림 (정각 기준 분)", $model.photoReminderMinutes, prompt: "2, 12", width: 90)
                     time("점심 시작", $model.lunchStart)
                     time("점심 종료", $model.lunchEnd)
-                    Text("매시 정각부터 마감까지 사진을 찍습니다. 점심 시간대는 건너뜁니다. 마감을 0으로 두면 끕니다.")
+                    Text("매시 정각부터 마감까지 카메라를 켜 둡니다. 점심 시간대는 건너뜁니다. 마감을 0으로 두면 끕니다.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

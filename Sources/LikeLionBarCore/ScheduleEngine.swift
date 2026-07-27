@@ -77,7 +77,7 @@ public struct ScheduleEngine: Sendable {
             face: .angry,
             // 입실 카운트다운과 구분되어야 무엇이 급한지 헷갈리지 않는다.
             // 이모지는 컬러라 상태색이 안 먹고 메뉴바 크기에서 뭉개진다.
-            text: "사진 " + Self.countdown(remaining),
+            text: "카메라 " + Self.countdown(remaining),
             tone: .alert,
             blinking: remaining <= schedule.photoUrgentThreshold
         )

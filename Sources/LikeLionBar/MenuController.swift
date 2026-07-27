@@ -132,7 +132,7 @@ final class MenuController: NSObject, NSMenuDelegate {
         }
     }
 
-    /// 사진은 하루 한 번이 아니라 시간마다라 따로 그린다.
+    /// 카메라 확인은 하루 한 번이 아니라 시간마다라 따로 그린다.
     private func photoItem(state: DayState) -> NSMenuItem {
         let hour = calendar.component(.hour, from: nowProvider())
         let total = schedule.photoHours.count
@@ -141,7 +141,7 @@ final class MenuController: NSObject, NSMenuDelegate {
 
         guard schedule.photoHours.contains(hour) else {
             // 점심시간이거나 수업 시간 밖. 조를 일이 없다.
-            let item = NSMenuItem(title: "⬜️  사진 — 지금은 해당 없음          \(tally)",
+            let item = NSMenuItem(title: "⬜️  카메라 — 지금은 해당 없음          \(tally)",
                                   action: nil, keyEquivalent: "")
             item.isEnabled = false
             return item
@@ -149,14 +149,14 @@ final class MenuController: NSObject, NSMenuDelegate {
 
         let isDone = state.isPhotoDone(hour: hour)
         let item = NSMenuItem(
-            title: "\(isDone ? "✅" : "⬜️")  \(hour)시 사진          \(tally)",
+            title: "\(isDone ? "✅" : "⬜️")  \(hour)시 카메라          \(tally)",
             action: #selector(togglePhoto),
             keyEquivalent: ""
         )
         item.target = self
         item.toolTip = isDone
             ? "클릭하면 완료를 취소합니다"
-            : String(format: "%d:%02d까지 찍고 클릭하세요", hour, schedule.photoDeadlineMinute)
+            : String(format: "%d:%02d까지 카메라를 켜 두세요", hour, schedule.photoDeadlineMinute)
         return item
     }
 
@@ -215,7 +215,7 @@ final class MenuController: NSObject, NSMenuDelegate {
     @objc private func togglePhoto() {
         let now = nowProvider()
         let hour = calendar.component(.hour, from: now)
-        Log.write("메뉴에서 \(hour)시 사진 토글 (사용자 클릭)")
+        Log.write("메뉴에서 \(hour)시 카메라 확인 토글 (사용자 클릭)")
         store.togglePhoto(hour: hour, at: now)
         onChange()
     }

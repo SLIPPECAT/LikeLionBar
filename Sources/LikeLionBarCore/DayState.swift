@@ -11,7 +11,7 @@ public enum Step: String, Codable, CaseIterable, Sendable {
         switch self {
         case .checkIn:   return "QR 입실"
         case .classroom: return "강의실 입장"
-        case .camera:    return "이번 시간 사진"
+        case .camera:    return "카메라 확인"
         case .checkOut:  return "QR 퇴실"
         }
     }

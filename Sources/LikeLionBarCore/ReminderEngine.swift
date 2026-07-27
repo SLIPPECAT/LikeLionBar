@@ -115,7 +115,7 @@ extension Reminder {
         switch self {
         case .checkIn(_, let isFinal): return isFinal ? "지금 안 하면 지각입니다" : "QR 입실"
         case .classroom(let isFinal):  return isFinal ? "강의실 입장 (마지막 안내)" : "강의실 입장"
-        case .photo(let hour, _):      return "\(hour)시 사진"
+        case .photo(_, let isFinal):   return isFinal ? "카메라 확인 (곧 마감)" : "카메라 확인"
         case .checkOut:                return "QR 퇴실"
         case .custom(let title):       return title
         }
@@ -130,10 +130,11 @@ extension Reminder {
         case .classroom:
             return "원격 강의실에 입장하세요. 휴대폰 인증이 필요합니다."
         case .photo(let hour, let isFinal):
+            // 찍으라고 시키는 게 아니라 켜져 있는지 되묻는 성격의 알림이다.
             let deadline = String(format: "%d시 %02d분", hour, deadlineMinute)
             return isFinal
-                ? "\(deadline)까지 얼마 안 남았습니다. 지금 찍으세요."
-                : "\(deadline)까지 카메라로 사진을 찍으세요."
+                ? "\(deadline)까지 얼마 안 남았습니다. 카메라 켜져 있는지 확인하세요."
+                : "카메라 켜져 있나요? \(deadline)까지입니다."
         case .checkOut:
             return "QR 입퇴실로 퇴실 처리하세요. 놓치면 오늘 출석이 인정되지 않습니다."
         case .custom:
